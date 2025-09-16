@@ -1,0 +1,114 @@
+---
+title: "Our first workbook"
+---
+
+# Quarto
+
+**Quarto** enables you to weave together content and executable code into a finished document. To learn more about *Quarto* see <https://quarto.org>.
+
+## Run code in chunks
+
+Chunks are the building blocks of a Quarto document. A chunk is a section of code that can be executed and its output included in the final document. Chunks are defined by three backticks followed by `{r}`, then the code, and finally three backticks again. For example:
+
+```{r}
+#| label: chunk_1
+
+1 + 1
+```
+
+Run this chunk by clicking on the play symbol (top-right button) of the chunk. The output is shown below and can be anything: text, numbers, plots, ... . You can also run all chunks above this chunk clicking on the button next to the play symbol.
+
+Chunks can have labels, which are useful for referencing them later. For example, the chunk above has the label `chunk_1`:
+
+```{r}
+#| label: chunk_2
+
+plot(cars)
+```
+
+
+You can tune the behavior of the chunk by adding options. For example, you can add `#| echo: false` to hide the code in the output:
+
+```{r}
+#| label: chunk_3
+#| echo: false
+
+2 * 2
+```
+
+The most basic options can be set using the gear-shaped symbol in the top-right corner of the chunk. Other options can be found in the [knitr documentation](https://yihui.org/knitr/) or in the [quarto documentation](https://quarto.org/docs/guide/).
+
+## Format your document content
+
+Quarto documents are written in Markdown, a lightweight markup language that allows you to format text easily. You can create headings, lists, links, and more using simple syntax. For example, in this document:
+
+- we use `#` for the title and `##` for the section titles
+- we use `**` to print the word Quarto in **bold** and `*` to print it in *italic*
+- we highlight words with single backticks `like this`
+- we create links using the syntax `[link text](URL)`
+- we use `-` to create a bullet list
+
+A detail documentation of the Markdown syntax can be found in the [quarto documentation](https://quarto.org/docs/guide/).
+
+## Some comments on the our workbook code
+
+Best practices for assignment is to use the `<-` operator. However, we use the `=` (widely used in other languages) that works as well. What you use is up to you as long as you stick to it.
+
+```{r}
+#| label: chunk_4
+
+a <- 1
+a = 1
+```
+
+We sometimes use the `%>%` operator of the `magrittr` package to "pipe" the output of one command into another command:
+
+```{r}
+#| label: chunk_5
+
+library(magrittr)
+# Instead of:
+values = c(1.2, 3.4, 5.6)
+rounded_values = round(values)
+rounded_sum = sum(rounded_values)
+
+# We do:
+rounded_sum = values %>% round() %>% sum()
+```
+
+For plots (of the ggplot2 package), the `+` operator means to add a visual element. For example, the following code adds a title:
+
+```{r}
+#| label: chunk_6
+
+library(ggplot2)
+p = ggplot(cars, aes(speed, dist)) +
+  geom_point()
+p 
+
+# Add title
+p = p + ggtitle("My plot")
+p
+```
+
+Finally, we use the `patchwork` package to combine multiple plots. This package changes the `|` operator (by default logical OR) to combine plots:
+
+```{r}
+#| label: chunk_7
+
+library(patchwork)
+p1 = ggplot(cars, aes(speed, dist)) +
+  geom_point()
+p2 = ggplot(cars, aes(speed, dist)) +
+  geom_point()
+
+p1 | p2
+```
+
+
+
+## Create a final document
+
+Once you are done, you can render a complete HTML document that contains all your documentation, code and results. Click the **Render** button at the top of the quarto file. Quarto also supports pdf and word output, lets you create presentations, websites, and more. You can find all the options in the [quarto documentation](https://quarto.org/docs/guide/).
+
+
