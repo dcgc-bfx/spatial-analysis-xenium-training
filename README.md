@@ -1,4 +1,4 @@
-![Banner](docs/xenium_banner.png)
+![Banner](docs/Xenium_banner.png)
 
 # Analysis of Spatial Transcriptomics Data (Xenium)
 
