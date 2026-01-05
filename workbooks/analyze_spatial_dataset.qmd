@@ -21,7 +21,7 @@ Before diving into the data, we need to load a few important R packages. These l
 
 ```{r}
 #| label: setup
-#| message: false
+#| message: true
 
 library(Seurat)     # Main package for single-cell and spatial transcriptomics analysis
 library(SeuratWrappers) # Add-ons for Seurat
@@ -54,7 +54,6 @@ options(ggplot2.cellned.fill="viridis")
 
 ```{r}
 #| label: dataset
-
 # Load 10x Xenium dataset with Seurat
 sc = LoadXenium("datasets/S196572", fov="fov", segmentations="cell")
 
@@ -383,6 +382,7 @@ This is implemented in Seurat with `NormalizeData()`:
 
 source("scripts/additionalFunctions.R") # load SpaNormWrapper function
 sc = SpaNormWrapper(sc=sc)
+saveRDS(sc, file="sc_normalized.RDS")
 ```
 
 This creates a new layer in the assay object called `data` that contains the normalized counts. You can inspect the normalized values like so:
@@ -441,6 +441,37 @@ This creates a new layer in the assay object called `scale.data` that contains t
 
 scale_data = GetAssayData(sc, layer="scale.data")
 scale_data[1:5, 1:5]
+```
+
+## Spatially variable genes
+
+NOTE BY KATRIN: UPDATE - this does not work
+
+```{r}
+#| label: preprocessing_7
+#| eval: false
+
+# The following function currently has a bug: 
+# https://github.com/satijalab/seurat/issues/10099
+# sc = FindSpatiallyVariableFeatures(sc, selection.method="moransi")
+
+# Get normal variable features
+features <- VariableFeatures(sc, assay="Xenium", layer="scale.data")
+
+# Get coordinates, "cell" to rownames, only keep "x" and "y" columns
+# This is the format, that the FindSpatiallyVariableFeatures function needs
+tc = GetTissueCoordinates(sc[[image]])
+tc = tc %>% tibble::column_to_rownames(var="cell") %>%
+  dplyr::select(x, y)
+
+# Run method for assay
+sc[["Xenium"]] = FindSpatiallyVariableFeatures(
+    object=sc[["Xenium"]],
+    slot="scale.data",
+    features=features,
+    spatial.location=tc,
+    selection.method="markvariogram")
+
 ```
 
 ## Dimensionality reduction
