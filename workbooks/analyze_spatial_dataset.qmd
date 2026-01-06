@@ -30,6 +30,8 @@ library(tidyverse)  # Essential collection of R packages, including ggplot2, dpl
 library(grid)       # For other plots
 library(viridis)    # Our continuous color palette
 
+options(future.globals.maxSize = 200 * 1024^3)  # 50 GB
+
 # Colors
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
               "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
@@ -49,6 +51,7 @@ options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
 
+
 # Hook to measure the computation time of a chunk
 # Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
 knitr::knit_hooks$set(timeit = function(before, options, envir) {
@@ -61,7 +64,7 @@ knitr::knit_hooks$set(timeit = function(before, options, envir) {
     print(paste0("Execution took ", elapsed, " seconds"))
   }
 })
-
+###
 ```
 
 # Loading the dataset
@@ -69,13 +72,13 @@ knitr::knit_hooks$set(timeit = function(before, options, envir) {
 ```{r}
 #| label: dataset
 # Load 10x Xenium dataset with Seurat
-sc = LoadXenium("datasets/S196572", fov="fov", segmentations="cell")
+sc = LoadXenium("datasets/xenium_mouse_brain", fov="fov", segmentations="cell")
 
 sc$orig.ident = "brain"
 Idents(sc) = "brain"
 
 # Load also nucleus_area and cell_area from cells.csv.gz
-cells_metadata = read.csv("datasets/S196572/cells.csv.gz")
+cells_metadata = read.csv("datasets/xenium_mouse_brain/cells.csv.gz")
 sc = AddMetaData(sc, metadata=cells_metadata %>% select(cell_id, nucleus_area, cell_area) %>% column_to_rownames("cell_id"))
 sc$nucleus_area = ifelse(is.na(sc$nucleus_area), 0, sc$nucleus_area) # there is a bug in Seurat ImageFeaturePlot if NA is in the data
 ```
@@ -1189,11 +1192,10 @@ table(ref$subclass_label)
 ```{r}
 #| label: annot_7_new
 
-ref <- NormalizeData(ref, normalization.method="LogNormalize", scale.factor=10000)
-ref <- FindVariableFeatures(ref, nfeatures = 1000)
+ref <- NormalizeData(ref, normalization.method="LogNormalize", scale.factor=100)
+ref <- FindVariableFeatures(ref)
 ref <- ScaleData(ref, features = VariableFeatures(ref))
-ref <- RunPCA(ref, features = VariableFeatures(ref), npcs = 50, nfeatures.print=5)
-#reduction.name="pca.sketch", features=VariableFeatures(sc), npcs=50, nfeatures.print=5
+ref <- RunPCA(ref, features = VariableFeatures(ref), npcs = 50)
 
 # finding common genes
 common_genes <- intersect(rownames(ref), rownames(sc))
@@ -1204,18 +1206,43 @@ length(common_genes)
 
 ```{r}
 
-#| label: transfer_anchors
+#| label: find_anchors
 
 anchors <- FindTransferAnchors(
   reference = ref,
   query = sc,
   features = common_genes,
   reference.assay = "RNA",
-  query.assay = "RNA.008um",
+  query.assay = "Xenium",
   reduction = "pcaproject",
   dims = 1:30
 )
 
+```
+
+# Transfer cell type labels
+
+```{r}
+
+#| label: transfer_labels
+
+predictions <- TransferData(
+  anchorset = anchors,
+  refdata = ref$subclass_label,
+  dims = 1:15
+)
+
+# Add predicted labels to sc metadata
+sc <- AddMetaData(sc, metadata = predictions$predicted.id, col.name = "predicted.celltype")
+```
+
+# Now plot with new labels
+
+```{r}
+#| label: Plot_new_labels
+
+DimPlot(sc, group.by = "predicted.celltype") +
+  labs(title = "Predicted cell type labels (sc)")
 ```
 
 We convert this Seurat object into a `spacexr` Reference object:
