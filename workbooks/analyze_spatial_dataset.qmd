@@ -1034,6 +1034,40 @@ ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
 table(ref$subclass_label)
 ```
 
+# Label transfer 
+
+```{r}
+#| label: annot_7_new
+
+ref <- NormalizeData(ref, normalization.method="LogNormalize", scale.factor=10000)
+ref <- FindVariableFeatures(ref, nfeatures = 1000)
+ref <- ScaleData(ref, features = VariableFeatures(ref))
+ref <- RunPCA(ref, features = VariableFeatures(ref), npcs = 50, nfeatures.print=5)
+#reduction.name="pca.sketch", features=VariableFeatures(sc), npcs=50, nfeatures.print=5
+
+# finding common genes
+common_genes <- intersect(rownames(ref), rownames(sc))
+length(common_genes)
+```
+
+# Find the Transfer Anchors between the reference and the test dataset
+
+```{r}
+
+#| label: transfer_anchors
+
+anchors <- FindTransferAnchors(
+  reference = ref,
+  query = sc,
+  features = common_genes,
+  reference.assay = "RNA",
+  query.assay = "RNA.008um",
+  reduction = "pcaproject",
+  dims = 1:30
+)
+
+```
+
 We convert this Seurat object into a `spacexr` Reference object:
 
 ```{r}

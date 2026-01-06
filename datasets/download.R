@@ -1,46 +1,21 @@
-# Dataset provided by 10x: Visium HD Spatial Gene Expression Library, Mouse Brain (FFPE)
-# https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he
+# Dataset provided by 10x: Xenium Mouse Brain Hemisphere (Fresh Frozen) with 5K Mouse Pan Tissue and Pathways Panel
+# https://www.10xgenomics.com/datasets/xenium-prime-fresh-frozen-mouse-brain
 
-unlink("datasets/visiumhd_mouse_brain", recursive=TRUE)
-dir.create("datasets/visiumhd_mouse_brain")
+# Prepare directory 
+unlink("datasets/xenium_mouse_brain", recursive=TRUE)
+dir.create("datasets/xenium_mouse_brain")
 
-# Download spaceranger files
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_web_summary.html",
-                    destfile="datasets/visiumhd_mouse_brain/web_summary.html")
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_cloupe_008um.cloupe",
-                    destfile="datasets/visiumhd_mouse_brain/cloupe_008um.cloupe")
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_feature_slice.h5",
-                    destfile="datasets/visiumhd_mouse_brain/feature_slice.h5")
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_metrics_summary.csv",
-                    destfile="datasets/visiumhd_mouse_brain/metrics_summary.csv")
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_molecule_info.h5",
-                    destfile="datasets/visiumhd_mouse_brain/molecule_info.h5")
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_spatial.tar.gz",
-                    destfile="datasets/visiumhd_mouse_brain/spatial.tar.gz")
-curl::curl_download(url="https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/Visium_HD_Mouse_Brain/Visium_HD_Mouse_Brain_binned_outputs.tar.gz",
-                    destfile = "datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
+# Download Xenium dataset 
+curl::curl_download(url="https://cf.10xgenomics.com/samples/xenium/3.0.0/Xenium_Prime_Mouse_Brain_Coronal_FF/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip",
+                    destfile="datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip")
+unzip(zipfile="datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip", exdir="datasets/xenium_mouse_brain")
+unlink("datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip")
+untar("datasets/xenium_mouse_brain/cell_feature_matrix.tar.gz", exdir="output_dir")
 
-# Unzip the tar.gz files
-untar(tarfile="datasets/visiumhd_mouse_brain/spatial.tar.gz")
-unlink("datasets/visiumhd_mouse_brain/spatial.tar.gz")
-file.rename(from="spatial", to="datasets/visiumhd_mouse_brain/spatial")
 
-untar(tarfile="datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
-unlink("datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
-file.rename(from="binned_outputs", to="datasets/visiumhd_mouse_brain/binned_outputs")
+# Download H&E images
+curl::curl_download(url="https://cf.10xgenomics.com/samples/xenium/3.0.0/Xenium_Prime_Mouse_Brain_Coronal_FF/Xenium_Prime_Mouse_Brain_Coronal_FF_he_image.ome.tif", 
+                    destfile="datasets/xenium_mouse_brain/Xenium_Prime_Mouse_Brain_Coronal_FF_he_image.ome.tif")
+curl::curl_download(url="https://cf.10xgenomics.com/samples/xenium/3.0.0/Xenium_Prime_Mouse_Brain_Coronal_FF/Xenium_Prime_Mouse_Brain_Coronal_FF_he_imagealignment.csv", 
+                    destfile="datasets/xenium_mouse_brain/Xenium_Prime_Mouse_Brain_Coronal_FF_he_imagealignment.csv")
 
-# Cortex coordinates
-curl::curl_download(url="https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=1",
-                    destfile="datasets/cortex_coordinates.csv")
-
-# Allen Brain Atlas from Seurat Visium HD vignette. Seurat object. Reduced to 200,000 cells (and rare cell types <25 cells have been removed).
-curl::curl_download(url="https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1",
-                    destfile="datasets/allen_scRNAseq_ref.Rds")
-
-# RCTD results
-h = curl::new_handle()
-curl::handle_setopt(handle=h, userpwd="jfHcF6RxsWJTa5Y:1234")
-curl::handle_setheaders(h, "X-Requested-With"="XMLHttpRequest")
-curl::curl_download(url="https://datashare.tu-dresden.de/public.php/webdav/",
-                    destfile="datasets/RCTD.Rds",
-                    handle=h)
