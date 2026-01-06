@@ -48,6 +48,20 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
+
+# Hook to measure the computation time of a chunk
+# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
+knitr::knit_hooks$set(timeit = function(before, options, envir) {
+  if(before) {
+    ## code to be run before a chunk
+    tictoc::tic()
+  } else {
+    ## code to be run after a chunk
+    elapsed = tictoc::toc()$toc
+    print(paste0("Execution took ", elapsed, " seconds"))
+  }
+})
+
 ```
 
 # Loading the dataset
@@ -1267,10 +1281,8 @@ sessioninfo::session_info()
 
 - Best practices:
   - [Single-cell best practices](https://www.sc-best-practices.org/preamble.html)
-  - [Orchestrating Single-Cell Analysis with Bioconductor
-](https://bioconductor.org/books/release/OSCA/)
-  - [Orchestrating Spatial Transcriptomics Analysis with Bioconductor
-](https://lmweber.org/OSTA/)
+  - [Orchestrating Single-Cell Analysis with Bioconductor](https://bioconductor.org/books/release/OSCA/)
+  - [Orchestrating Spatial Transcriptomics Analysis with Bioconductor](https://lmweber.org/OSTA/)
 - Seurat:
   - [Essential commands](https://satijalab.org/seurat/articles/essential_commands)
   - [Basic Single-cell Analysis Vignette](https://satijalab.org/seurat/articles/pbmc3k_tutorial)
