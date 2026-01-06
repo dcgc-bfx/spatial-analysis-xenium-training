@@ -55,13 +55,13 @@ options(ggplot2.cellned.fill="viridis")
 ```{r}
 #| label: dataset
 # Load 10x Xenium dataset with Seurat
-sc = LoadXenium("datasets/S196572", fov="fov", segmentations="cell")
+sc = LoadXenium("datasets/xenium_mouse_brain", fov="fov", segmentations="cell")
 
 sc$orig.ident = "brain"
 Idents(sc) = "brain"
 
 # Load also nucleus_area and cell_area from cells.csv.gz
-cells_metadata = read.csv("datasets/S196572/cells.csv.gz")
+cells_metadata = read.csv("datasets/xenium_mouse_brain/cells.csv.gz")
 sc = AddMetaData(sc, metadata=cells_metadata %>% select(cell_id, nucleus_area, cell_area) %>% column_to_rownames("cell_id"))
 sc$nucleus_area = ifelse(is.na(sc$nucleus_area), 0, sc$nucleus_area) # there is a bug in Seurat ImageFeaturePlot if NA is in the data
 ```
@@ -390,6 +390,8 @@ This creates a new layer in the assay object called `data` that contains the nor
 ```{r}
 #| label: preprocessing_2
 
+sc = readRDS("sc_normalized.RDS")
+
 data = GetAssayData(sc, layer="data")
 data[1:10, 1:10]
 ```
@@ -441,37 +443,6 @@ This creates a new layer in the assay object called `scale.data` that contains t
 
 scale_data = GetAssayData(sc, layer="scale.data")
 scale_data[1:5, 1:5]
-```
-
-## Spatially variable genes
-
-NOTE BY KATRIN: UPDATE - this does not work
-
-```{r}
-#| label: preprocessing_7
-#| eval: false
-
-# The following function currently has a bug: 
-# https://github.com/satijalab/seurat/issues/10099
-# sc = FindSpatiallyVariableFeatures(sc, selection.method="moransi")
-
-# Get normal variable features
-features <- VariableFeatures(sc, assay="Xenium", layer="scale.data")
-
-# Get coordinates, "cell" to rownames, only keep "x" and "y" columns
-# This is the format, that the FindSpatiallyVariableFeatures function needs
-tc = GetTissueCoordinates(sc[[image]])
-tc = tc %>% tibble::column_to_rownames(var="cell") %>%
-  dplyr::select(x, y)
-
-# Run method for assay
-sc[["Xenium"]] = FindSpatiallyVariableFeatures(
-    object=sc[["Xenium"]],
-    slot="scale.data",
-    features=features,
-    spatial.location=tc,
-    selection.method="markvariogram")
-
 ```
 
 ## Dimensionality reduction
@@ -671,6 +642,95 @@ p1
 * What can we already say about the clusters we have now?   
 :::
 
+## Spatial clustering
+
+Up to now, clusters were driven only by gene expression. Here we add spatial context so that nearby cells are more likely to be grouped together when their expression is compatible. We follow the SpatialLeiden workflow (ported from the Python tutorial: https://spatialleiden.readthedocs.io/stable/usage.html) but run it from R via reticulate.
+
+First, export the minimum needed from Seurat into a Python AnnData: normalized counts, PCA embedding, and cell centroids.
+
+```{r}
+#| label: spatial_clustering_1
+
+# Get normalized counts and transpose (in python matrices are backwards)
+data = SeuratObject::LayerData(sc, assay="Xenium", layer="data")
+barcodes = colnames(data)
+features = rownames(data)
+data = Matrix::t(data)
+
+# Get PCA
+pca = SeuratObject::Embeddings(sc, "pca")
+pca = as.matrix(pca)
+
+# Get centroids of cells 
+coords = SeuratObject::GetTissueCoordinates(sc[["fov"]])
+rownames(coords) = coords$cell
+coords$cell = NULL
+coords = as.matrix(coords)
+
+# Load python modules (add convert=FALSE to TRUE automatic conversion from python to R and back)
+# - E.g. load scanpy module and name it "scanpy"
+# - All python calls: Use "$" instead of ".". E.g. scanpy.AnnData => scanpy$AnnData
+# - All basic data types are converted automatically. '{}' becomes list. '[]' becomes 'c()'. Sometimes you need to force a type though (as.integer).
+# - Also check functions py_to_R and R_to_py
+scanpy = reticulate::import("scanpy", convert=FALSE)
+numpy = reticulate::import("numpy", convert=FALSE)
+scipy = reticulate::import("scipy", convert=FALSE)
+squidpy = reticulate::import("squidpy", convert=FALSE)
+spatialleiden = reticulate::import("spatialleiden", convert=FALSE)
+
+# Convert into minimal python anndata object
+adata = scanpy$AnnData(X = scipy$sparse$csr_matrix(data),
+                       obsm = list("spatial"=coords, "X_pca"=pca))
+adata$var_names = features
+adata$obs_names = barcodes
+adata
+```
+
+Build two neighbor graphs: one in expression space (Scanpy) and one in physical space (Squidpy), then convert spatial distances to connectivity.
+
+```{r}
+#| label: spatial_clustering_2
+
+# Get neighbors graph based on gene expression
+scanpy$pp$neighbors(adata, random_state=as.integer(42))
+
+# Get neighbors graph based on spatial context
+squidpy$gr$spatial_neighbors(adata, coord_type="generic", n_neighs=as.integer(10))
+
+# Calculate distances between neighbors
+adata$obsp["spatial_connectivities"] = spatialleiden$distance2connectivity(
+    adata$obsp["spatial_distances"]
+)
+```
+
+Run SpatialLeiden to combine both graphs into a single clustering, controlling granularity with resolution and the spatial-vs-expression tradeoff with layer_ratio.
+
+```{r}
+#| label: spatial_clustering_3
+
+# Spatial clustering
+spatialleiden$spatialleiden(
+    adata, resolution=2, layer_ratio=1.5, directed=c(FALSE, TRUE), random_state=as.integer(42)
+)
+
+# Translate results back into R
+cluster_results = as.data.frame(reticulate::py_to_r(adata$obs))
+sc = AddMetaData(sc, metadata=cluster_results)
+
+# Let's focus on spatial clusters from here on 
+Idents(sc) = "spatialleiden"
+```
+
+Bring the cluster labels back into Seurat metadata and compare tissue plots of expression-only vs spatially informed clusters.
+
+```{r}
+#| label: spatial_clustering_4
+
+p1 = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) 
+p2 = ImageDimPlot(sc, group.by="spatialleiden") 
+p1 | p2
+```
+
 # Cluster annotation
 
 What cell types correspond to the clusters? To identify the cell types corresponding to the clusters, we typically follow these steps:
@@ -770,8 +830,7 @@ A **violin plot** allows us to visualize the distribution of gene expression acr
 ```{r}
 #| label: plotting_1
 
-features_to_plot = c(TumorCells="Epcam", Hepatocytes="Alb", Macrophages="Aif1", 
-                     SmoothMuscleCells="Des", EndothelialCells="Pecam1")
+features_to_plot = c(Cortex1="Rorb", Cortex2="Satb2", Ventricle="Sox2", Midbrain="En1")
 
 plist = VlnPlot(sc, features=features_to_plot, pt.size=0, ncol=1, combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] + NoLegend()) }
@@ -1058,352 +1117,13 @@ If you want to learn more about BANKSY, we find these pages helpful:
 
 :::
 
-```{r}
-knitr::knit_exit()
-```
+# Cell type annotation by reference mapping
 
-# Integration with single-cell data
-
-# Cell type annotation by deconvolution
-
-Spatial transcriptomics data often require deconvolution to **resolve the cellular composition** of individual spatial units (cells). This section guides you through the process of estimating cell type compositions in Visium HD data using the RCTD method from the `spacexr` package.
-
-## What is deconvolution?
-
-In spatial transcriptomics, such as 10x Visium HD, each cell may contain zero, one, or multiple cells, depending on the resolution, cell size, and local cell density. As a result, we cannot assume that each cell corresponds to a single cell. To address this, deconvolution methods are used to estimate the proportion of different cell types within each cell.
-
-These methods also often incorporate spatial information (i.e., neighborhood relationships between cells) to improve accuracy.
-
-One such method is **Robust Cell Type Decomposition (RCTD)**, implemented in the [`spacexr`](https://github.com/dmcable/spacexr) package. RCTD learns gene expression profiles of cell types from a **single-cell reference dataset** and uses these profiles to deconvolve spatial cells into estimated cell type compositions.
-
-For this tutorial, we use a preprocessed reference derived from the [Allen Brain atlas](https://portal.brain-map.org/) single-cell dataset, filtered to include 200,000 cells with rare cell types removed. We will annotate only the cortex region of the Visium HD dataset.
-
-## Subset the cortex region
-
-We first extract the cortex region using [pre-defined coordinates](https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=0) from a CSV file and convert them into a segmentation object with `CreateSegmentation`. Next we use the `Overlay` function to identify all cells in our spatial dataset that fall into the cortex region: 
-
-```{r}
-#| label: annot_1
-
-cortex_coordinates = read.csv("datasets/cortex_coordinates.csv")
-cortex_coordinates = CreateSegmentation(cortex_coordinates)
-
-sc[["cortex"]] = Overlay(sc[["slice1.008um"]], cortex_coordinates)
-DefaultAssay(sc[["cortex"]]) = ""
-SpatialDimPlot(sc, images="cortex", cols=cal_pal50) + NoLegend() + scale_fill_manual(values=cal_pal50)
-```
-
-Next, we create a Seurat object that only includes the cells that fall within the cortex region:
-
-```{r}
-#| label: annot_2
-
-cortex_cells = Cells(sc[["cortex"]])
-cortex = subset(sc, cells=cortex_cells)
-
-# Slim it down
-cortex = DietSeurat(cortex, misc=FALSE)
-cortex@tools = list()
-cortex@commands = list()
-```
-
-To make the analysis computationally manageable, we sketch the dataset down to 50,000 cells for this tutorial, then perform feature selection, data scaling and PCA:
-
-```{r}
-#| label: annot_3
-
-# Sketch
-cortex = FindVariableFeatures(cortex, nfeatures=1000)
-cortex = SketchData(
-  object = cortex,
-  ncells = 50000,
-  method = "LeverageScore",
-  sketched.assay = "sketch",
-  over.write = TRUE
-)
-# Feature selection
-cortex = FindVariableFeatures(cortex, nfeatures=1000)
-
-# Scale data
-cortex = ScaleData(cortex, features=VariableFeatures(cortex))
-
-# PCA
-cortex = RunPCA(cortex, reduction.name="pca", features=VariableFeatures(cortex), npcs=50, nfeatures.print=5)
-```
-
-We now prepare the `SpatialRNA` object required by `spacexr`:
-
-```{r}
-#| label: annot_4
-
-# Counts
-counts = GetAssayData(cortex, assay="sketch", layer="counts")
-
-# Coordinates
-cells_sketch = Cells(cortex[["sketch"]])
-coords = GetTissueCoordinates(cortex)[cells_sketch, 1:2]
-
-# Total counts
-total_counts = colSums(counts)
-
-# Create spacexr SpatialRNA object
-query = spacexr::SpatialRNA(coords, counts, total_counts)
-```
-
-## Load and prepare the reference dataset
-
-We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
-
-```{r}
-#| label: annot_5
-
-ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
-ref
-```
-
-We use the `subclass_label` column for cell type annotations:
-
-```{r}
-#| label: annot_6
-
-ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
-table(ref$subclass_label)
-```
-
-We convert this Seurat object into a `spacexr` Reference object:
-
-```{r}
-#| label: annot_7
-
-# Counts
-counts = GetAssayData(ref, assay="RNA", layer="counts")
-
-# Cell type labels
-cell_types = as.factor(ref$subclass_label)
-levels(cell_types) = gsub("/", "-", levels(cell_types))
-cell_types = droplevels(cell_types)
-
-# Total counts
-total_counts = ref$nCount_RNA
-
-# Create Reference object
-ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=500)
-
-# Remove since not needed
-rm(coords, counts, cortex_coordinates)
-gc()
-```
-
-## Run RCTD
-
-We are now ready to run RCTD. However, since this step is time-consuming, we provide the results precomputed and saved in the file `datasets/RCTD.Rds`. For completeness, here is how you would normally run the algorithm:
-
-```{r}
-#| label: annot_8
-
-# This will take five hours
-#
-#RCTD = create.RCTD(query, ref, max_cores=12)
-#RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
-#saveRDS(RCTD, "datasets/RCTD.Rds")
-#gc()
-```
-
-We simply load the results:
-
-```{r}
-#| label: annot_9
-
-RCTD = readRDS("datasets/RCTD.Rds")
-RCTD_results = RCTD@results$results_df
-head(RCTD_results)
-```
-
-The `results_df` contains the main output of the deconvolution. Key columns include:  
-* `spot_class`: classification of each cell ("singlet", "doublet_certain", "doublet_uncertain", "reject")  
-* `first_type`: predicted identity of the first cell type  
-* `second_type`: only populated for doublets
-
-We now add these predictions to the cell metadata of the cortex object:
-
-```{r}
-#| label: annot_10
-
-# Add to cortex object
-RCTD_results = RCTD_results[, c("spot_class", "first_type", "scond_type")]
-colnames(RCTD_results) = c("doublet", "first_cell_type", "second_cell_type")
-cortex = AddMetaData(cortex, metadata=RCTD_results)
-
-# Replace NA (not available) with "unknown"
-cortex$doublet = as.character(cortex$doublet)
-cortex$doublet[is.na(cortex$doublet)] = "Unknown"
-cortex$doublet = factor(cortex$doublet)
-
-cortex$first_cell_type = as.character(cortex$first_cell_type)
-cortex$first_cell_type[is.na(cortex$first_cell_type)] = "Unknown"
-cortex$first_cell_type = factor(cortex$first_cell_type)
-
-cortex$second_cell_type = as.character(cortex$second_cell_type)
-cortex$second_cell_type[is.na(cortex$second_cell_type)] = "Unknown"
-cortex$second_cell_type = factor(cortex$second_cell_type)
-```
-
-## Project back and transfer results
-
-We now project the RCTD results from the sketch cortex dataset to the full cortex dataset. This is similar to the projection of the clustering and UMAP results we did before:
-
-```{r}
-#| label: annot_11
-
-cortex = ProjectData(cortex,
-                 sketched.assay="sketch", assay="RNA.008um", 
-                 sketched.reduction="pca", full.reduction="pca.008um", 
-                 refdata=list(doublet.008um="doublet",
-                              first_cell_type.008um="first_cell_type",
-                              second_cell_type.008um="second_cell_type"),
-                 dims=1:30)
-```
-
-Next, we include the projected predictions in the original brain dataset (`sc`):
-
-```{r}
-#| label: annot_12
-
-# We will the columns with "unknown" and then set the values for all cells of the cortex
-cortex_cells = rownames(cortex[[]])
-sc$doublet.008um = "unknown"
-sc$doublet.008um[cortex_cells] = cortex$doublet.008um[cortex_cells]
-sc$doublet.008um = factor(sc$doublet.008um)
-
-sc$first_cell_type.008um = "Unknown"
-sc$first_cell_type.008um[cortex_cells] = cortex$first_cell_type.008um[cortex_cells]
-sc$first_cell_type.008um = factor(sc$first_cell_type.008um)
-
-sc$second_cell_type.008um = "Unknown"
-sc$second_cell_type.008um[cortex_cells] = cortex$second_cell_type.008um[cortex_cells]
-sc$second_cell_type.008um = factor(sc$second_cell_type.008um)
-```
-
-## Visualize the results
-
-We can now visualize cell type predictions. For example, here we highlight three predicted excitatory neuron layers (typically labeled as L2/3, L4/5, and L5) on the spatial plot:
-:
-```{r}
-#| label: annot_13
-
-Idents(sc) = "first_cell_type.008um"
-
-layered_excitatory_neurons = c("L2-3 IT CTX", "L4-5 IT CTX", "L5 IT CTX")
-layered_excitatory_cells = CellsByIdentities(sc, idents=layered_excitatory_neurons)
-layered_excitatory_cells[["NA"]] = NULL
-
-SpatialDimPlot(sc, cells.highlight=layered_excitatory_cells, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
-```
-
-## Annotate clusters and domains
-
-Using the predicted cell types, we can now try to annotate our clusters and domains. Keep in mind that predictions were only generated for a subset of the dataset, so results may not apply to all clusters.
-
-We plot the distribution of predicted cell types for the `seurat_clusters` and `banksy_clusters`:
-
-```{r}
-#| label: annot_14
-
-# Include cell types with at least 100 cells annotated
-# Do not include cells with "Unknown" cell type
-cells_per_cell_type = table(sc$first_cell_type.008um)
-cell_types_to_include = which(cells_per_cell_type >= 100) %>% names()
-cell_types_to_include = cell_types_to_include[cell_types_to_include != "Unknown"]
-
-# Count cell types per cluster
-cell_type_cluster_counts = sc[[]] %>% 
-         dplyr::filter(first_cell_type.008um %in% cell_types_to_include) %>%
-         dplyr::count(first_cell_type.008um, seurat_clusters.008um)
-
-# Plot distribution
-ggplot(cell_type_cluster_counts,
-       aes(x=seurat_clusters.008um, y=n, fill=first_cell_type.008um)) +
-  geom_bar(stat = "identity", position = "fill") +
-  ylab("# of cells") +
-  ggtitle(paste0("Distribution of Cell Types across seurat clusters")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle=45, hjust=1))
-```
-
-```{r}
-#| label: annot_15
-
-# Count cell types per cluster
-cell_type_cluster_counts = sc[[]] %>% 
-         dplyr::filter(first_cell_type.008um %in% cell_types_to_include) %>%
-         dplyr::count(first_cell_type.008um, banksy_clusters.008um)
-
-# Plot distribution
-ggplot(cell_type_cluster_counts,
-       aes(x=banksy_clusters.008um, y=n, fill=first_cell_type.008um)) +
-  geom_bar(stat = "identity", position = "fill") +
-  ylab("# of cells") +
-  ggtitle(paste0("Distribution of Cell Types across banksy clusters")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle=45, hjust=1))
-```
-
-We observe that several **clusters** contain multiple predicted cell types, indicating that clustering performance should still be improved. However, it is also evident that many **cells** may contain more than one cell type, which inherently complicates the clustering process.
-
-Annotation may work better for larger structures such as the `banksy_domains`. Here we have a look some of the excitatory neurons that we identified in the previous section and try to find protein domains:
-
-```{r}
-#| label: annot_16
-
-cell_type_domain_counts = sc[[]] %>%
-  dplyr::filter(first_cell_type.008um %in% layered_excitatory_neurons) %>%
-  dplyr::count(first_cell_type.008um, banksy_domains.008um)
-
-ggplot(cell_type_domain_counts,
-       aes(x=first_cell_type.008um, y=n, fill=banksy_domains.008um)) +
-  geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")),
-                position = position_stack(vjust = 0.5), size = 3) +
-  ylab("# of cells") +
-  ggtitle(paste0("Protein Domains with selected excitatory neurons")) +
-  theme_minimal()
-```
-
-Here we can identify several BANKSY domains as excitatory neuron layers.
-
-::: {.callout-note}
-## Assignment
-
-Find marker genes for the identified BANKSY domains, and suggest the identify of at least 1 domain
-:::
+TODO: RAJINDER 
 
 # Export results to Xenium Explorer
 
-TODO: pro Datensatz nur CSV output: clusters, cell types ... 
-
-In a previous session, we introduced the Loupe Browser as a convenient tool for exploring spatial transcriptomics data. In this section, we will export the results of our analysis as CSV files, enabling their import and further exploration in Loupe.
-
-```{r}
-#| label: loupe_export
-
-# Only for the 8 um cells
-cells_to_export = Cells(sc[["RNA.008um"]])
-
-# cell metadata
-metadata_to_export = sc[[]][cells_to_export, ] %>%
-  dplyr::select(orig.ident, seurat_clusters.008um) %>%
-  tibble::rownames_to_column("barcode")
-
-write.csv(metadata_to_export, "datasets/exported_cell_metadata.csv", row.names=FALSE)
-
-# UMAP
-umap_to_export = Embeddings(sc[["umap.008um"]])[cells_to_export, ] %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column("Barcode")
-write.csv(umap_to_export, "datasets/exported_umap.csv", row.names=FALSE)
-```
-
-Information about importing results into Loupe can be found in the [Loupe tutorial](https://www.10xgenomics.com/support/software/loupe-browser/latest/tutorials/introduction/lb-sc-interface-and-navigation).
+TODO: ANDREAS
 
 # Session info
 
@@ -1419,19 +1139,16 @@ sessioninfo::session_info()
 
 - Best practices:
   - [Single-cell best practices](https://www.sc-best-practices.org/preamble.html)
-  - [Orchestrating Single-Cell Analysis with Bioconductor
-](https://bioconductor.org/books/release/OSCA/)
-  - [Orchestrating Spatial Transcriptomics Analysis with Bioconductor
-](https://lmweber.org/OSTA/)
+  - [Orchestrating Single-Cell Analysis with Bioconductor](https://bioconductor.org/books/release/OSCA/)
+  - [Orchestrating Spatial Transcriptomics Analysis with Bioconductor](https://lmweber.org/OSTA/)
 - Seurat:
   - [Essential commands](https://satijalab.org/seurat/articles/essential_commands)
   - [Basic Single-cell Analysis Vignette](https://satijalab.org/seurat/articles/pbmc3k_tutorial)
-  - [Seurat Visium Analysis Vignette](https://satijalab.org/seurat/articles/spatial_vignette)
-  - [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
+  - [Seurat Xenium Analysis Vignette](https://satijalab.org/seurat/articles/seurat5_spatial_vignette_2)
 - Tools:
-  - [Spaceranger](https://www.10xgenomics.com/support/software/space-ranger/latest)
-  - [Loupe Browser](https://www.10xgenomics.com/support/software/loupe-browser/latest)
-  - [Spotsweeper](https://github.com/MicTott/SpotSweeper)
-  - [banksy](https://github.com/prabhakarlab/Banksy)
+  - [Xenium Explorer](https://www.10xgenomics.com/support/software/xenium-explorer/latest)
+  - [SpaNorm](https://www.bioconductor.org/packages/release/bioc/html/SpaNorm.html)
+  - [SpatialLeiden](https://spatialleiden.readthedocs.io/stable/index.html)
+  - [Banksy](https://github.com/prabhakarlab/Banksy)
 
 
