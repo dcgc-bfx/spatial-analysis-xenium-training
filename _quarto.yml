@@ -2,7 +2,6 @@ project:
   type: "default"
   execute-dir: "project"
   render:
-    - "workbooks/our_first_workbook.qmd"
     - "workbooks/read_dataset_to_seurat.qmd"
     - "workbooks/analyze_spatial_dataset.qmd"
 
@@ -11,13 +10,15 @@ project:
 ####################
 execute: 
   echo: true
-  warning: false
+  warning: true
+  message: true
   
 #################
 # Knitr options #
 #################
 knitr:
   opts_chunk:
+    timeit: true
     dpi: 400
     fig-width: 8
     fig-height: 5
