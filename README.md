@@ -20,8 +20,8 @@ With our workbooks, you will explore how to analyze spatial transcriptomics data
 
 Our workbooks cover:
 
-- Learn how to load spatial data into R and examine how the data is structured
-- Key steps in the analysis workflow, including quality control, preprocessing, clustering and visualisation, cluster annotation, spatial clustering, and reference mapping.
+- Learn how to [load spatial data into R](workbooks/read_dataset_to_seurat.qmd) and examine how the data is structured
+- Key steps in the [analysis workflow](workbooks/analyze_spatial_dataset.qmd), including quality control, preprocessing, clustering and visualisation, cluster annotation, spatial clustering, and reference mapping.
 
 ## Credits
 
