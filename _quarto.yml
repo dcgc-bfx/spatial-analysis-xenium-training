@@ -27,7 +27,7 @@ knitr:
     dev.args:
       png:
         type: "cairo"
-    
+
 ##################
 # Format options #
 ##################
