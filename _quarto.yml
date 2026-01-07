@@ -27,7 +27,6 @@ knitr:
     dev.args:
       png:
         type: "cairo"
-    timeit: true
 
 ##################
 # Format options #
