@@ -407,6 +407,8 @@ This creates a new layer in the assay object called `data` that contains the nor
 ```{r}
 #| label: preprocessing_2
 
+sc = readRDS("sc_normalized.RDS")
+
 data = GetAssayData(sc, layer="data")
 data[1:10, 1:10]
 ```
@@ -458,37 +460,6 @@ This creates a new layer in the assay object called `scale.data` that contains t
 
 scale_data = GetAssayData(sc, layer="scale.data")
 scale_data[1:5, 1:5]
-```
-
-## Spatially variable genes
-
-NOTE BY KATRIN: UPDATE - this does not work
-
-```{r}
-#| label: preprocessing_7
-#| eval: false
-
-# The following function currently has a bug: 
-# https://github.com/satijalab/seurat/issues/10099
-# sc = FindSpatiallyVariableFeatures(sc, selection.method="moransi")
-
-# Get normal variable features
-features <- VariableFeatures(sc, assay="Xenium", layer="scale.data")
-
-# Get coordinates, "cell" to rownames, only keep "x" and "y" columns
-# This is the format, that the FindSpatiallyVariableFeatures function needs
-tc = GetTissueCoordinates(sc[[image]])
-tc = tc %>% tibble::column_to_rownames(var="cell") %>%
-  dplyr::select(x, y)
-
-# Run method for assay
-sc[["Xenium"]] = FindSpatiallyVariableFeatures(
-    object=sc[["Xenium"]],
-    slot="scale.data",
-    features=features,
-    spatial.location=tc,
-    selection.method="markvariogram")
-
 ```
 
 ## Dimensionality reduction
@@ -688,6 +659,95 @@ p1
 * What can we already say about the clusters we have now?   
 :::
 
+## Spatial clustering
+
+Up to now, clusters were driven only by gene expression. Here we add spatial context so that nearby cells are more likely to be grouped together when their expression is compatible. We follow the SpatialLeiden workflow (ported from the Python tutorial: https://spatialleiden.readthedocs.io/stable/usage.html) but run it from R via reticulate.
+
+First, export the minimum needed from Seurat into a Python AnnData: normalized counts, PCA embedding, and cell centroids.
+
+```{r}
+#| label: spatial_clustering_1
+
+# Get normalized counts and transpose (in python matrices are backwards)
+data = SeuratObject::LayerData(sc, assay="Xenium", layer="data")
+barcodes = colnames(data)
+features = rownames(data)
+data = Matrix::t(data)
+
+# Get PCA
+pca = SeuratObject::Embeddings(sc, "pca")
+pca = as.matrix(pca)
+
+# Get centroids of cells 
+coords = SeuratObject::GetTissueCoordinates(sc[["fov"]])
+rownames(coords) = coords$cell
+coords$cell = NULL
+coords = as.matrix(coords)
+
+# Load python modules (add convert=FALSE to TRUE automatic conversion from python to R and back)
+# - E.g. load scanpy module and name it "scanpy"
+# - All python calls: Use "$" instead of ".". E.g. scanpy.AnnData => scanpy$AnnData
+# - All basic data types are converted automatically. '{}' becomes list. '[]' becomes 'c()'. Sometimes you need to force a type though (as.integer).
+# - Also check functions py_to_R and R_to_py
+scanpy = reticulate::import("scanpy", convert=FALSE)
+numpy = reticulate::import("numpy", convert=FALSE)
+scipy = reticulate::import("scipy", convert=FALSE)
+squidpy = reticulate::import("squidpy", convert=FALSE)
+spatialleiden = reticulate::import("spatialleiden", convert=FALSE)
+
+# Convert into minimal python anndata object
+adata = scanpy$AnnData(X = scipy$sparse$csr_matrix(data),
+                       obsm = list("spatial"=coords, "X_pca"=pca))
+adata$var_names = features
+adata$obs_names = barcodes
+adata
+```
+
+Build two neighbor graphs: one in expression space (Scanpy) and one in physical space (Squidpy), then convert spatial distances to connectivity.
+
+```{r}
+#| label: spatial_clustering_2
+
+# Get neighbors graph based on gene expression
+scanpy$pp$neighbors(adata, random_state=as.integer(42))
+
+# Get neighbors graph based on spatial context
+squidpy$gr$spatial_neighbors(adata, coord_type="generic", n_neighs=as.integer(10))
+
+# Calculate distances between neighbors
+adata$obsp["spatial_connectivities"] = spatialleiden$distance2connectivity(
+    adata$obsp["spatial_distances"]
+)
+```
+
+Run SpatialLeiden to combine both graphs into a single clustering, controlling granularity with resolution and the spatial-vs-expression tradeoff with layer_ratio.
+
+```{r}
+#| label: spatial_clustering_3
+
+# Spatial clustering
+spatialleiden$spatialleiden(
+    adata, resolution=2, layer_ratio=1.5, directed=c(FALSE, TRUE), random_state=as.integer(42)
+)
+
+# Translate results back into R
+cluster_results = as.data.frame(reticulate::py_to_r(adata$obs))
+sc = AddMetaData(sc, metadata=cluster_results)
+
+# Let's focus on spatial clusters from here on 
+Idents(sc) = "spatialleiden"
+```
+
+Bring the cluster labels back into Seurat metadata and compare tissue plots of expression-only vs spatially informed clusters.
+
+```{r}
+#| label: spatial_clustering_4
+
+p1 = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) 
+p2 = ImageDimPlot(sc, group.by="spatialleiden") 
+p1 | p2
+```
+
 # Cluster annotation
 
 What cell types correspond to the clusters? To identify the cell types corresponding to the clusters, we typically follow these steps:
@@ -787,8 +847,7 @@ A **violin plot** allows us to visualize the distribution of gene expression acr
 ```{r}
 #| label: plotting_1
 
-features_to_plot = c(TumorCells="Epcam", Hepatocytes="Alb", Macrophages="Aif1", 
-                     SmoothMuscleCells="Des", EndothelialCells="Pecam1")
+features_to_plot = c(Cortex1="Rorb", Cortex2="Satb2", Ventricle="Sox2", Midbrain="En1")
 
 plist = VlnPlot(sc, features=features_to_plot, pt.size=0, ncol=1, combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] + NoLegend()) }
@@ -1075,10 +1134,9 @@ If you want to learn more about BANKSY, we find these pages helpful:
 
 :::
 
-```{r}
-knitr::knit_exit()
-```
+# Cell type annotation by reference mapping
 
+<<<<<<< HEAD
 # Integration with single-cell data
 
 # Cell type annotation by deconvolution
@@ -1166,85 +1224,6 @@ total_counts = colSums(counts)
 # Create spacexr SpatialRNA object
 query = spacexr::SpatialRNA(coords, counts, total_counts)
 ```
-
-## Load and prepare the reference dataset
-
-We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
-
-```{r}
-#| label: annot_5
-
-ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
-ref
-```
-
-We use the `subclass_label` column for cell type annotations:
-
-```{r}
-#| label: annot_6
-
-ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
-table(ref$subclass_label)
-```
-
-# Label transfer 
-
-```{r}
-#| label: annot_7_new
-
-ref <- NormalizeData(ref, normalization.method="LogNormalize", scale.factor=100)
-ref <- FindVariableFeatures(ref)
-ref <- ScaleData(ref, features = VariableFeatures(ref))
-ref <- RunPCA(ref, features = VariableFeatures(ref), npcs = 50)
-
-# finding common genes
-common_genes <- intersect(rownames(ref), rownames(sc))
-length(common_genes)
-```
-
-# Find the Transfer Anchors between the reference and the test dataset
-
-```{r}
-
-#| label: find_anchors
-
-anchors <- FindTransferAnchors(
-  reference = ref,
-  query = sc,
-  features = common_genes,
-  reference.assay = "RNA",
-  query.assay = "Xenium",
-  reduction = "pcaproject",
-  dims = 1:30
-)
-
-```
-
-# Transfer cell type labels
-
-```{r}
-
-#| label: transfer_labels
-
-predictions <- TransferData(
-  anchorset = anchors,
-  refdata = ref$subclass_label,
-  dims = 1:15
-)
-
-# Add predicted labels to sc metadata
-sc <- AddMetaData(sc, metadata = predictions$predicted.id, col.name = "predicted.celltype")
-```
-
-# Now plot with new labels
-
-```{r}
-#| label: Plot_new_labels
-
-DimPlot(sc, group.by = "predicted.celltype") +
-  labs(title = "Predicted cell type labels (sc)")
-```
-
 We convert this Seurat object into a `spacexr` Reference object:
 
 ```{r}
@@ -1452,33 +1431,88 @@ Here we can identify several BANKSY domains as excitatory neuron layers.
 Find marker genes for the identified BANKSY domains, and suggest the identify of at least 1 domain
 :::
 
-# Export results to Xenium Explorer
 
-TODO: pro Datensatz nur CSV output: clusters, cell types ... 
+## Load and prepare the reference dataset
 
-In a previous session, we introduced the Loupe Browser as a convenient tool for exploring spatial transcriptomics data. In this section, we will export the results of our analysis as CSV files, enabling their import and further exploration in Loupe.
+We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
 
 ```{r}
-#| label: loupe_export
+#| label: annot_5
 
-# Only for the 8 um cells
-cells_to_export = Cells(sc[["RNA.008um"]])
-
-# cell metadata
-metadata_to_export = sc[[]][cells_to_export, ] %>%
-  dplyr::select(orig.ident, seurat_clusters.008um) %>%
-  tibble::rownames_to_column("barcode")
-
-write.csv(metadata_to_export, "datasets/exported_cell_metadata.csv", row.names=FALSE)
-
-# UMAP
-umap_to_export = Embeddings(sc[["umap.008um"]])[cells_to_export, ] %>%
-  as.data.frame() %>%
-  tibble::rownames_to_column("Barcode")
-write.csv(umap_to_export, "datasets/exported_umap.csv", row.names=FALSE)
+ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
+ref
 ```
 
-Information about importing results into Loupe can be found in the [Loupe tutorial](https://www.10xgenomics.com/support/software/loupe-browser/latest/tutorials/introduction/lb-sc-interface-and-navigation).
+We use the `subclass_label` column for cell type annotations:
+
+```{r}
+#| label: annot_6
+
+ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
+table(ref$subclass_label)
+```
+
+# Label transfer 
+
+```{r}
+#| label: annot_7_new
+
+ref <- NormalizeData(ref, normalization.method="LogNormalize", scale.factor=100)
+ref <- FindVariableFeatures(ref)
+ref <- ScaleData(ref, features = VariableFeatures(ref))
+ref <- RunPCA(ref, features = VariableFeatures(ref), npcs = 50)
+
+# finding common genes
+common_genes <- intersect(rownames(ref), rownames(sc))
+length(common_genes)
+```
+
+# Find the Transfer Anchors between the reference and the test dataset
+
+```{r}
+
+#| label: find_anchors
+
+anchors <- FindTransferAnchors(
+  reference = ref,
+  query = sc,
+  features = common_genes,
+  reference.assay = "RNA",
+  query.assay = "Xenium",
+  reduction = "pcaproject",
+  dims = 1:30
+)
+
+```
+
+# Transfer cell type labels
+
+```{r}
+
+#| label: transfer_labels
+
+predictions <- TransferData(
+  anchorset = anchors,
+  refdata = ref$subclass_label,
+  dims = 1:15
+)
+
+# Add predicted labels to sc metadata
+sc <- AddMetaData(sc, metadata = predictions$predicted.id, col.name = "predicted.celltype")
+```
+
+# Now plot with new labels
+
+```{r}
+#| label: Plot_new_labels
+
+DimPlot(sc, group.by = "predicted.celltype") +
+  labs(title = "Predicted cell type labels (sc)")
+```
+
+# Export results to Xenium Explorer
+
+TODO: ANDREAS
 
 # Session info
 
@@ -1499,12 +1533,11 @@ sessioninfo::session_info()
 - Seurat:
   - [Essential commands](https://satijalab.org/seurat/articles/essential_commands)
   - [Basic Single-cell Analysis Vignette](https://satijalab.org/seurat/articles/pbmc3k_tutorial)
-  - [Seurat Visium Analysis Vignette](https://satijalab.org/seurat/articles/spatial_vignette)
-  - [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
+  - [Seurat Xenium Analysis Vignette](https://satijalab.org/seurat/articles/seurat5_spatial_vignette_2)
 - Tools:
-  - [Spaceranger](https://www.10xgenomics.com/support/software/space-ranger/latest)
-  - [Loupe Browser](https://www.10xgenomics.com/support/software/loupe-browser/latest)
-  - [Spotsweeper](https://github.com/MicTott/SpotSweeper)
-  - [banksy](https://github.com/prabhakarlab/Banksy)
+  - [Xenium Explorer](https://www.10xgenomics.com/support/software/xenium-explorer/latest)
+  - [SpaNorm](https://www.bioconductor.org/packages/release/bioc/html/SpaNorm.html)
+  - [SpatialLeiden](https://spatialleiden.readthedocs.io/stable/index.html)
+  - [Banksy](https://github.com/prabhakarlab/Banksy)
 
 

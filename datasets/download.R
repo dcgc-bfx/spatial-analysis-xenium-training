@@ -23,4 +23,4 @@ curl::curl_download(url="https://cf.10xgenomics.com/samples/xenium/3.0.0/Xenium_
 
 # Allen Brain Atlas from Seurat Visium HD vignette. Seurat object. Reduced to 200,000 cells (and rare cell types <25 cells have been removed).
 curl::curl_download(url="https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1",
-                      +                     destfile="datasets/allen_scRNAseq_ref.Rds")
+                     destfile="datasets/allen_scRNAseq_ref.Rds")
