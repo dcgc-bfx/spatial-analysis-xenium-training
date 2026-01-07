@@ -1434,28 +1434,38 @@ Find marker genes for the identified BANKSY domains, and suggest the identify of
 
 ## Load and prepare the reference dataset
 
-We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
+We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1), which is provided as a preprocessed Seurat object. This dataset contains well-annotated single-cell RNA-seq profiles and will serve as our reference atlas for cell type annotation. The file is stored locally as an .Rds object under the `datasets folder`; if it is not present, refer to `datasets/download.R` to retrieve it.
 
 ```{r}
-#| label: annot_5
+#| label: ref_annot_1
 
 ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
 
-We use the `subclass_label` column for cell type annotations:
+Next, we inspect the metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer.
 
 ```{r}
-#| label: annot_6
+#| label: ref_annot_2
+
+ref@meta.data
+```
+
+From the metadata, we identify subclass_label as the column that contains cell type annotations. These labels will be used as the ground truth during reference-based annotation of our query dataset. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
+
+```{r}
+#| label: ref_annot_3
 
 ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
 table(ref$subclass_label)
 ```
 
-# Label transfer 
+To ensure that the reference and query (sc) datasets are comparable, we now preprocess the reference object using the same normalization and dimensionality reduction strategy applied earlier to the query data. This step is critical, as reference mapping assumes both datasets exist in a compatible feature and latent space.
+
+After normalization, we identify highly variable genes, scale the data, and compute principal components. Finally, we determine the set of genes shared between the reference and query datasets, which will be used to align the two objects during anchor finding.
 
 ```{r}
-#| label: annot_7_new
+#| label: ref_annot_4
 
 ref <- NormalizeData(ref, normalization.method="LogNormalize", scale.factor=100)
 ref <- FindVariableFeatures(ref)
@@ -1467,11 +1477,11 @@ common_genes <- intersect(rownames(ref), rownames(sc))
 length(common_genes)
 ```
 
-# Find the Transfer Anchors between the reference and the test dataset
+With both datasets processed in a comparable manner, we now identify anchors between the reference and query objects. Anchors represent pairs of biologically similar cells across datasets and form the foundation for transferring information such as cell type labels. Here, we project the query data into the PCA space of the reference to improve alignment.
 
 ```{r}
 
-#| label: find_anchors
+#| label: ref_annot_5
 
 anchors <- FindTransferAnchors(
   reference = ref,
@@ -1485,26 +1495,26 @@ anchors <- FindTransferAnchors(
 
 ```
 
-# Transfer cell type labels
+Once the anchors have been identified, we use them to transfer cell type annotations from the reference to the query dataset. The predicted labels are generated for each query cell based on similarity to reference cells and then stored as new metadata within the query object.
 
 ```{r}
 
-#| label: transfer_labels
+#| label: ref_annot_6
 
 predictions <- TransferData(
   anchorset = anchors,
   refdata = ref$subclass_label,
-  dims = 1:15
+  dims = 1:30
 )
 
 # Add predicted labels to sc metadata
 sc <- AddMetaData(sc, metadata = predictions$predicted.id, col.name = "predicted.celltype")
 ```
 
-# Now plot with new labels
+Finally, we visualize the transferred cell type labels using a dimensionality reduction plot. This allows us to assess how well the predicted annotations align with the underlying structure of the query data and to identify potential ambiguities or mixed populations.
 
 ```{r}
-#| label: Plot_new_labels
+#| label: ref_annot_7
 
 DimPlot(sc, group.by = "predicted.celltype") +
   labs(title = "Predicted cell type labels (sc)")
