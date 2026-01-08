@@ -10,8 +10,8 @@ project:
 ####################
 execute: 
   echo: true
-  warning: true
-  message: true
+  warning: false
+  message: false
   
 #################
 # Knitr options #
@@ -33,6 +33,8 @@ knitr:
 ##################
 format:
   html:
+    toc: true
+    toc-location: left
     theme:
     - "serif"
     - "css/html.scss"

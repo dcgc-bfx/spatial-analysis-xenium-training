@@ -1,6 +1,4 @@
 /.quarto/
 **/*.quarto_ipynb
 datasets/
-*.RDS
-*.html
-analyze_spatial_dataset_files/
+.Rproj.user

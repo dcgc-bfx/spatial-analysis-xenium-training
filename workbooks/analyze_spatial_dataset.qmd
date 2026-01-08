@@ -54,17 +54,21 @@ options(ggplot2.binned.fill="viridis")
 
 # Hook to measure the computation time of a chunk
 # Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
-knitr::knit_hooks$set(timeit = function(before, options, envir) {
-  if(before) {
-    ## code to be run before a chunk
-    tictoc::tic()
-  } else {
-    ## code to be run after a chunk
-    elapsed = tictoc::toc()$toc
-    print(paste0("Execution took ", elapsed, " seconds"))
+knitr::knit_hooks$set(timeit = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      # record the current time before each chunk
+      now <<- Sys.time()
+    } else {
+      # calculate the time difference after a chunk
+      res <- difftime(Sys.time(), now, units = "secs")
+      # return a character string to show the time
+      paste("Time for this code chunk to run:", round(res,
+        2), "seconds")
+    }
   }
-})
-###
+}))
 ```
 
 # Loading the dataset
@@ -140,10 +144,10 @@ p3 = ggplot(sc[[]], aes(x=nCount_Xenium)) + geom_histogram(fill="black", bins=50
 p3
 ```
 
-Look for cells with very few or very many counts. cells with <`cut_nCount` counts are suspicious and flagged for removal. 
+Look for cells with very few or very many counts. Cells with <`cut_nCount` counts are suspicious and flagged for removal. 
 
 ::: {.callout-tip}
-### Cells flagged here should appear randomly across the tissue #####
+### Cells flagged here should appear randomly across the tissue
 If they form a distinct pattern, reconsider the threshold — you might be removing biologically relevant data.
 :::
 
@@ -225,7 +229,7 @@ p1 | p2
 Now that we got an impression on the QC metrics for the dataset, let us have a look at how cells were segmented in the first place, and how the segmentation relates to the QC metrics: 
 
 ```{r}
-#| label: qc_6_2
+#| label: qc_7
 
 # Number of cells in the dataset
 n_cells = length(Cells(sc))
@@ -235,7 +239,7 @@ table(sc$segmentation_method)
 table(sc$segmentation_method) %>% prop.table() * 100
 
 # Visualize segmentation methods
-cols = cal_pal50[c(20, 40, 50)]
+cols = cal_pal50[c(1, 28, 46)]
 names(cols) = unique(sc$segmentation_method)
 p1 = ImageDimPlot(sc, group.by="segmentation_method", cols=cols) + ggtitle(paste(n_cells, "cells total"))
 p1
@@ -272,9 +276,10 @@ p6
 
 ::: {.callout-note}
 ### Questions  
-What do you think about the relation of low QC and segmentation by nuclear expansion?
-Why might mitochondrial content be misleading in some tissues (e.g., muscle or brain)?  
-What are the trade-offs of stricter vs. more lenient filtering?  
+
+What do you think about the relation of low QC and segmentation by nuclear expansion?   
+Why might mitochondrial content be misleading in some tissues (e.g., muscle or brain)?     
+What are the trade-offs of stricter vs. more lenient filtering?     
 :::
 
 ## Filtering of cells
@@ -284,7 +289,7 @@ Once you have reviewed the metrics and decided on thresholds, remove poor-qualit
 Before filtering:
 
 ```{r}
-#| label: qc_7
+#| label: qc_8
 
 sc
 ```
@@ -292,7 +297,7 @@ sc
 Apply the filters:
 
 ```{r}
-#| label: qc_8
+#| label: qc_9
 
 sc = subset(sc, nCount_Xenium < cut_nCount, invert=TRUE) %>% suppressWarnings()
 sc = subset(sc, nFeature_Xenium < cut_nFeature, invert=TRUE) %>% suppressWarnings()
@@ -305,40 +310,45 @@ sc
 Genes expressed in only a few cells can add noise. First, we count how many cells each gene is detected in:
 
 ```{r}
-#| label: qc_9
+#| label: qc_10
 
 counts = GetAssayData(sc, layer="counts")
+
+# Calculate the number and % of cells in which each gene is expressed
 genes_expressed = rowSums(counts > 0)
-head(genes_expressed, 5)
+genes_expressed_perc = genes_expressed / ncol(counts) * 100
 ```
 
 Let us quickly summarize these numbers: 
 
 ```{r}
-#| label: qc_10
+#| label: qc_11
 
 summary(genes_expressed)
+summary(genes_expressed_perc)
+
+hist(genes_expressed_perc, breaks=1000, xlim=c(0,10), col="black")
 ```
 
-If required, keep genes expressed in >N cells:
-
-```{r}
-#| label: qc_11
-#| eval: false
-
-#genes_expressed = genes_expressed[genes_expressed > 10]
-#length(genes_expressed)
-```
-
-Then subset the Seurat object:
+If required, keep genes expressed in >N% cells:
 
 ```{r}
 #| label: qc_12
 #| eval: false
 
-#sc
-#sc = subset(sc, features=names(genes_expressed)) %>% suppressWarnings()
-#sc
+genes_expressed = genes_expressed_perc[genes_expressed_perc > 1]
+length(genes_expressed)
+```
+
+Then subset the Seurat object:
+
+```{r}
+#| label: qc_13
+#| eval: false
+
+sc
+sc = subset(sc, features=names(genes_expressed)) %>% suppressWarnings()
+sc
 ```
 
 ::: {.callout-tip}
@@ -365,36 +375,14 @@ Each step ensures that only informative, reliable data is passed into clustering
 
 ## Normalization
 
-Raw counts vary widely across cells due to differences in sequencing depth (library size). To make counts **comparable across cells**, we perform normalization.
+In single-cell and spatial transcriptomics, total counts (library size) can vary across cells due to differences in sequencing depth (single-cell) or differences in the amount of cell area captured (spatial). To make counts comparable across cells, we often apply a global library-size normalization such as Seurat’s `LogNormalize`.
 
-Note that normalization methods for spatial data are still being developed and evaluated. For this workshop, we apply log-normalization. 
+In spatial transcriptomics, however, total counts can vary systematically across tissue regions, and this variation can be hard to separate from real spatial biology. Methods for spatially-aware normalization are still evolving, and we decided to use `SpaNorm` here.
 
-**How does it work?**  
-
-* Per cell, the count for each gene is divided by the total count for that cell, and then multiplied by 10,000  
-* These "counts per 10,000" are then log-transformed using the natural logarithm (with a pseudocount of 1)  
-
-This is implemented in Seurat with `NormalizeData()`:
+`SpaNorm` normalizes raw counts in a spatially-aware way, reducing region-specific technical differences while preserving genuine spatial expression patterns.
 
 ```{r}
-#| label: preprocessing_option_1
-#| eval: false
-
-# Load a function that we wrote to copy raw "counts" to the "data" layer without normalization
-#source("scripts/additionalFunctions.R") # load TransformData function
-
-#sc = TransformData(sc, assay="Xenium", layer="counts", save="data", log=TRUE)
-```
-
-```{r}
-#| label: preprocessing_option_2
-#| eval: false
-
-# sc = NormalizeData(sc, normalization.method="LogNormalize", scale.factor=100)
-```
-
-```{r}
-#| label: preprocessing_option_3
+#| label: preprocessing_1
 #| eval: true
 
 source("scripts/additionalFunctions.R") # load SpaNormWrapper function
@@ -407,8 +395,7 @@ This creates a new layer in the assay object called `data` that contains the nor
 ```{r}
 #| label: preprocessing_2
 
-sc = readRDS("sc_normalized.RDS")
-
+# sc = readRDS("sc_normalized.RDS")
 data = GetAssayData(sc, layer="data")
 data[1:10, 1:10]
 ```
@@ -464,7 +451,7 @@ scale_data[1:5, 1:5]
 
 ## Dimensionality reduction
 
-With ~20,000 genes, the data is too high-dimensional for visualization or clustering. At this point of the analysis, we have already reduced the dimensionality of the dataset to HVGs. The biological manifold however can be described by far fewer dimensions than the number of (variable) genes, since expression profiles of different genes are correlated if they are involved in the same biological process. 
+With thousands of genes, the data is too high-dimensional for visualization or clustering. At this point of the analysis, we have already reduced the dimensionality of the dataset to HVGs. The biological manifold however can be described by far fewer dimensions than the number of (variable) genes, since expression profiles of different genes are correlated if they are involved in the same biological process. 
 
 We use Principal Component Analysis (PCA) to reduce the dimensionality. PCA finds new axes (PCs) that capture the most variance in the dataset, and projects the data onto these axes. The resulting meta-variables are called principal components (PCs).
 
@@ -743,8 +730,16 @@ Bring the cluster labels back into Seurat metadata and compare tissue plots of e
 ```{r}
 #| label: spatial_clustering_4
 
+# Cluster colors
+cols_spatialleiden = cal_pal50[1:length(levels(sc$spatialleiden))]
+names(cols_spatialleiden) = levels(sc$spatialleiden)
+```
+
+```{r}
+#| label: spatial_clustering_5
+
 p1 = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) 
-p2 = ImageDimPlot(sc, group.by="spatialleiden") 
+p2 = ImageDimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) 
 p1 | p2
 ```
 
@@ -811,15 +806,6 @@ DotPlot(sc, features=markers_top$gene %>% unique()) +
         legend.position="bottom") + 
   guides(size=guide_legend(order=1, title="Pct expressed"), color=guide_colorbar(title="Scaled Expression")) + 
   ggtitle("Top markers per cluster (expression scaled)")
-
-DotPlot(sc, features=markers_top$gene %>% unique(), scale=FALSE) + 
-  viridis::scale_color_viridis() + 
-  ylab("Cluster") + xlab("") + 
-  theme(axis.text.x=element_text(angle=90, hjust=1, vjust=.5),
-        legend.position="bottom") + 
-  guides(size=guide_legend(order=1, title="Pct expressed"), color=guide_colorbar(title="Average Expression")) +
-  ggtitle("Top markers per cluster (expression unscaled)")
-
 ```
 
 ::: {.callout-note}
@@ -842,12 +828,22 @@ Try to find the identity of one cluster!
 
 To further explore the results and visualize gene expression for known marker genes across different clusters, we can use various plotting functions.
 
-A **violin plot** allows us to visualize the distribution of gene expression across clusters. For example, we can plot the expression of genes Acta2 and Apoe:
+A **violin plot** allows us to visualize the distribution of gene expression across clusters.
 
 ```{r}
 #| label: plotting_1
 
-features_to_plot = c(Cortex1="Rorb", Cortex2="Satb2", Ventricle="Sox2", Midbrain="En1")
+features_to_plot = c(Cortex_layer4="Rorb", 
+                     Cortex_layer5="Etv1", 
+                     Cortex_layer6="Ighm", 
+                     Cortex_layer6="Tle4", 
+                     Hippocampus_CA3="Camk1d", 
+                     Hippocampus_DG="Cyp7b1", 
+                     Hypothalamus="Dlk1", 
+                     Stratium_CP="Rgs9", 
+                     Stratium_AN="Cyp26b1", 
+                     Thalamus="Prkcd", 
+                     Ventricle="Plxnb2")
 
 plist = VlnPlot(sc, features=features_to_plot, pt.size=0, ncol=1, combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] + NoLegend()) }
@@ -906,107 +902,123 @@ gc()
 Visualize cluster marker genes and known marker genes on the UMAP and in spatial context, and identify at least one cell type from it. 
 :::
 
-# Spatial clustering and domains
+# Cell type annotation by reference mapping
 
-So far, we have explored the **fundamentals of analyzing spatial (and single-cell) transcriptomic data** using Seurat. The workflow introduced above serves is a good starting point.
+## Load and prepare the reference dataset
 
-However, a key limitation of this approach is that it treats each spatial cell independently, without considering its physical context within the tissue. Spatial analysis methods aim to address this by incorporating neighborhood information—enhancing biological interpretation and robustness. Several steps in our basic workflow can be extended to include this spatial context.
+We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1), which is provided as a preprocessed Seurat object. This dataset contains well-annotated single-cell RNA-seq profiles and will serve as our reference atlas for cell type annotation. The file is stored locally as an .Rds object under the `datasets folder`; if it is not present, refer to `datasets/download.R` to retrieve it.
+
+```{r}
+#| label: ref_annot_1
+#| eval: false
+
+ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
+ref
+```
+
+Next, we inspect the metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer.
+
+```{r}
+#| label: ref_annot_2
+#| eval: false
+
+ref@meta.data
+```
+
+From the metadata, we identify `subclass_label` as the column that contains cell type annotations. These labels will be used as the ground truth during reference-based annotation of our query dataset. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
+
+```{r}
+#| label: ref_annot_3
+#| eval: false
+
+ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
+table(ref$subclass_label)
+```
+
+To ensure that the reference and query (`sc`) datasets are comparable, we now preprocess the reference object using a similar normalization and dimensionality reduction strategy applied earlier to the query data. This step is critical, as reference mapping assumes both datasets exist in a compatible feature and latent space.
+
+After normalization, we identify highly variable genes, scale the data, and compute principal components. Finally, we determine the set of genes shared between the reference and query datasets, which will be used to align the two objects during anchor finding.
+
+```{r}
+#| label: ref_annot_4
+#| eval: false
+
+ref = NormalizeData(ref, normalization.method="LogNormalize")
+ref = FindVariableFeatures(ref)
+ref = ScaleData(ref, features=VariableFeatures(ref))
+ref = RunPCA(ref, features=VariableFeatures(ref), npcs=50)
+
+# finding common genes
+common_genes = intersect(rownames(ref), rownames(sc))
+length(common_genes)
+```
+
+With both datasets processed in a comparable manner, we now identify anchors between the reference and query objects. Anchors represent pairs of biologically similar cells across datasets and form the foundation for transferring information such as cell type labels. Here, we project the query data into the PCA space of the reference to improve alignment.
+
+```{r}
+
+#| label: ref_annot_5
+#| eval: false
+
+anchors = FindTransferAnchors(
+  reference=ref,
+  query=sc,
+  features=common_genes,
+  reference.assay="RNA",
+  query.assay="Xenium",
+  reduction="pcaproject",
+  dims=1:30
+)
+```
+
+Once the anchors have been identified, we use them to transfer cell type annotations from the reference to the query dataset. The predicted labels are generated for each query cell based on similarity to reference cells and then stored as new metadata within the query object.
+
+```{r}
+#| label: ref_annot_6
+#| eval: false
+
+predictions = TransferData(
+  anchorset=anchors,
+  refdata=ref$subclass_label,
+  dims=1:30
+)
+
+# Add predicted labels to sc metadata
+sc = AddMetaData(sc, metadata=predictions$predicted.id, col.name="predicted.celltype")
+```
+
+Finally, we visualize the transferred cell type labels using a dimensionality reduction plot. This allows us to assess how well the predicted annotations align with the underlying structure of the query data and to identify potential ambiguities or mixed populations.
+
+```{r}
+#| label: ref_annot_7
+#| eval: false
+
+p = DimPlot(sc, group.by="predicted.celltype") +
+  labs(title="Predicted cell type labels (sc)")
+p
+```
+
+# Spatial domains
+
+So far, we analyzed the Xenium data with a Seurat-style single-cell workflow, but swapped in two spatially aware upgrades: `SpaNorm` for normalization and `spatialleiden` for clustering. This gives us clusters that are driven by expression while being encouraged to be spatially coherent.
+
+Next, we show a complementary approach: `BANKSY`. The goal is to highlight a different way of using space. While `spatialleiden` adds spatial information at the clustering step, `BANKSY` builds spatial context into the representation itself by enriching each cell’s features with information from its neighborhood. In practice, this often shifts the output from “cell types/states” toward “tissue domains/niches”.
 
 ## What is BANKSY?
 
-[BANKSY](https://github.com/prabhakarlab/Banksy) is a computational method specifically designed for spatial transcriptomics analysis. By integrating information from neighboring cells, BANKSY can reduce noise in gene expression data, distinguish between different cell types based on spatial context, and identify spatial domains. 
+[BANKSY](https://github.com/prabhakarlab/Banksy) is a method for spatial transcriptomics that combines two views of each cell:
 
-BANKSY represents each cell or cell not only by its own transcriptomic profile but also by the average expression of its local neighborhood. This dual representation captures both intrinsic cellular identity and microenvironmental context. The degree to which neighborhood information is incorporated is controlled by the lambda parameter:  
+- the cell’s own expression profile  
+- a summary of the local neighborhood expression (a local average)
 
-* Lower values (e.g., **lambda = 0.2**) emphasize immediate neighbors — useful for **cell typing**  
-* Higher values (e.g., **lambda = 0.8**) incorporate broader spatial context — useful for **domain detection**  
+By embedding cells using both components, BANKSY captures cell identity plus microenvironment, which can improve robustness and make larger-scale tissue structure easier to detect.
 
-Although BANKSY is a standalone tool with its own framework, it can be integrated into Seurat workflows using the `RunBanksy` function from the `SeuratWrappers` package. This allows users to apply BANKSY directly to Seurat objects.
+A single parameter, lambda (λ), controls how much neighborhood information is mixed in:
 
-In summary, BANKSY leverages the principle that a cell’s identity is shaped not only by its own gene expression but also by its surrounding environment. By adjusting a single hyperparameter, it provides flexibility to shift focus from cellular identity to higher-order tissue organization.
+- Lower λ (e.g. 0.2): more “single-cell-like”, useful for cell typing  
+- Higher λ (e.g. 0.8): more “spatial-domain-like”, useful for domain detection
 
-## Improve clustering with BANKSY
-
-BANKSY can serve as an alternative to the default clustering approach we used earlier. In this step, we apply BANKSY with a low lambda value (0.2) to focus on local neighborhood information, and set the number of neighbors (k_geom) to 15.
-
-**Note:** This step can be time- and memory-intensive.
-
-```{r}
-#| label: spatial_1
-
-# remove.packages('Banksy')
-# restart R
-#remotes::install_github("prabhakarlab/Banksy")
-#remotes::install_github("jleechung/seurat-wrappers")
-
-sc = RunBanksy(sc,
-               assay="Xenium", assay_name="banksy_cells",
-               features="variable",
-               lambda=0.2, k_geom=15,
-               verbose=TRUE)
-
-# Set it as default
-DefaultAssay(sc) = "banksy_cells"
-
-gc()
-```
-
-At this point, we have created a new assay `banksy_space`, containing the BANKSY-transformed data, and have set it as the default.
-
-**⚠️ Important**: BANKSY fills the `scale.data` layer. Therefore do not call `ScaleData` on the BANKSY assay as this negates the effects of lambda. 
-
-```{r}
-#| label: spatial_2
-
-sc
-```
-
-Next, we apply PCA, clustering, and UMAP using the BANKSY assay. We use the first 15 PCs and set a clustering resolution of 0.5, though these values can and should be adjusted depending on your dataset.
-
-```{r}
-#| label: spatial_3
-
-# Save Xenium seurat_clusters
-sc$xenium_seurat_clusters = sc$seurat_clusters
-
-sc = RunPCA(sc, reduction.name="banksy_cells_pca", features=rownames(sc[["banksy_cells"]]), npcs=30, nfeatures.print=5)
-sc = FindNeighbors(sc, reduction="banksy_cells_pca", dims=1:30)
-sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
-sc = RunUMAP(sc, reduction="banksy_cells_pca", reduction.name="banksy_cells_umap", dims=1:30, return.model=TRUE)
-sc$banksy_cells_clusters = sc$seurat_clusters
-
-# BANKSY cluster colors
-cols_banksy_cells_clusters = rev(cal_pal50)[1:length(levels(sc$banksy_cells_clusters))]
-names(cols_banksy_cells_clusters) = levels(sc$banksy_cells_clusters)
-
-# Reset
-DefaultAssay(sc) = "Xenium"
-```
-
-Here we compare the results of default **original clustering versus BANKSY cell clustering**, first using UMAP plots:
-
-```{r}
-#| label: spatial_4_2
-
-p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="xenium_seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
-p2 = DimPlot(sc, reduction="banksy_cells_umap", label=TRUE, group.by="banksy_cells_clusters", cols=cols_banksy_cells_clusters) + NoLegend() + ggtitle("BANKSY cell clustering")
-p1 | p2
-```
-
-And as spatial plots:
-
-```{r}
-#| label: spatial_5
-
-p1 = ImageDimPlot(sc, group.by="xenium_seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
-p2 = ImageDimPlot(sc, group.by="banksy_cells_clusters", cols=cols_banksy_cells_clusters) + NoLegend() + ggtitle("BANKSY cell clustering")
-p1 | p2
-```
-
-::: {.callout-tip}
-## Recommendations
-BANKSY does not automatically produce better results. Always evaluate both clustering outputs in the context of your biological question and data quality.
-:::
+In this workshop, we run BANKSY and then reuse the familiar downstream Seurat steps (PCA/graph/clustering/visualization), so you can directly compare how the two strategies (`spatialleiden` versus `BANKSY`) change what the labels represent.
 
 ## Identifying spatial domains with BANKSY
 
@@ -1014,10 +1026,8 @@ In addition to improving clustering, BANKSY can be tuned to detect larger-scale 
 
 In the following example, we set `lambda=0.8` and `k_geom=50` to include more neighboring cells in the analysis.
 
-**Note:** We first remove the BANKSY assay from the previous run to conserve memory. This step is optional but will save us some memory resources.
-
 ```{r}
-#| label: spatial_6
+#| label: banksy_1
 
 sc = RunBanksy(sc,
                assay="Xenium", assay_name="banksy_domains",
@@ -1031,10 +1041,10 @@ DefaultAssay(sc) = "banksy_domains"
 gc()
 ```
 
-As before, we perform PCA, clustering, and UMAP on the BANKSY assay. We use the first 10 PCs and a clustering resolution of 0.5, but these values should again be adjusted depending on your dataset:
+We now perform PCA, clustering, and UMAP on the BANKSY assay. We use the first 10 PCs and a clustering resolution of 0.5, but these values should again be adjusted depending on your dataset:
 
 ```{r}
-#| label: spatial_7
+#| label: banksy_2
 
 sc = RunPCA(sc, reduction.name="banksy_domains_pca", features=rownames(sc[["banksy_domains"]]), npcs=30, nfeatures.print=5)
 sc = FindNeighbors(sc, reduction="banksy_domains_pca", dims=1:30)
@@ -1042,7 +1052,7 @@ sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
 sc = RunUMAP(sc, reduction="banksy_domains_pca", reduction.name="banksy_domains_umap", dims=1:30, return.model=TRUE)
 sc$banksy_domains_clusters = sc$seurat_clusters
 
-# BANKSY comain colors
+# BANKSY domain colors
 cols_banksy_domains_clusters = rev(cal_pal50)[1:length(levels(sc$banksy_domains_clusters))]
 names(cols_banksy_domains_clusters) = levels(sc$banksy_domains_clusters)
 
@@ -1050,27 +1060,29 @@ names(cols_banksy_domains_clusters) = levels(sc$banksy_domains_clusters)
 DefaultAssay(sc) = "Xenium"
 ```
 
-Here we compare the results of default **original clustering versus BANKSY domain clustering**, first using UMAP plots:
+Here we compare the results of default **original clustering, spatially-aware clustering, and BANKSY domains**, first using UMAP plots:
 
 ```{r}
-#| label: spatial_4
+#| label: banksy_3
 
-p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="xenium_seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
-p2 = DimPlot(sc, reduction="banksy_domains_umap", label=TRUE, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domain clustering")
-p1 | p2
+p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+p2 = DimPlot(sc, reduction="umap", label=TRUE, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
+p3 = DimPlot(sc, reduction="banksy_domains_umap", label=TRUE, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
+p1 | p2 | p3
 ```
 
 And as spatial plots:
 
 ```{r}
-#| label: spatial_5_2
+#| label: banksy_4
 
-p1 = ImageDimPlot(sc, group.by="xenium_seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
-p2 = ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domain clustering")
-p1 | p2
+p1 = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+p2 = ImageDimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
+p3 = ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domain clustering")
+p1 | p2 | p3
 ```
 
-If your clustering results look similar to those from the previous BANKSY run (with `lambda=0.2`), this could indicate that the dominant tissue structures are already captured at a local level. We encourage you to systematically explore different parameter settings for `lambda`, `k_geom`, and `resolution` to assess their impact on clustering outcomes and spatial domain resolution.
+We encourage you to systematically explore different parameter settings for `lambda`, `k_geom`, and `resolution` to assess their impact on clustering outcomes and spatial domain resolution.
 
 ## Can we evaluate the generated analyses?
 
