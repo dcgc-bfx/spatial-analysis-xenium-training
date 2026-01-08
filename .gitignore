@@ -1,4 +1,6 @@
 /.quarto/
 **/*.quarto_ipynb
 datasets/
-workbooks/
+*.RDS
+*.html
+analyze_spatial_dataset_files/
