@@ -10,8 +10,8 @@ project:
 ####################
 execute: 
   echo: true
-  warning: true
-  message: true
+  warning: false
+  message: false
   
 #################
 # Knitr options #
