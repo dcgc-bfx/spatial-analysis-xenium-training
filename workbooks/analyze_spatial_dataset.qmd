@@ -395,7 +395,7 @@ This creates a new layer in the assay object called `data` that contains the nor
 ```{r}
 #| label: preprocessing_2
 
-sc = readRDS("sc_normalized.RDS")
+# sc = readRDS("sc_normalized.RDS")
 data = GetAssayData(sc, layer="data")
 data[1:10, 1:10]
 ```
