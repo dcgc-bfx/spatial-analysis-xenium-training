@@ -30,7 +30,7 @@ library(tidyverse)  # Essential collection of R packages, including ggplot2, dpl
 library(grid)       # For other plots
 library(viridis)    # Our continuous color palette
 
-options(future.globals.maxSize = 200 * 1024^3)  # 50 GB
+options(future.globals.maxSize = 50 * 1024^3)  # 50 GB
 
 # Colors
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
@@ -1134,6 +1134,113 @@ If you want to learn more about BANKSY, we find these pages helpful:
 * https://github.com/prabhakarlab/Banksy?tab=readme-ov-file  
 
 :::
+
+# Cell type annotation by reference mapping
+
+## Load and prepare the reference dataset
+
+We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1), which is provided as a preprocessed Seurat object. This dataset contains well-annotated single-cell RNA-seq profiles and will serve as our reference atlas for cell type annotation. The file is stored locally as an .Rds object under the `datasets folder`; if it is not present, refer to `datasets/download.R` to retrieve it.
+
+```{r}
+#| label: ref_annot_1
+
+ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
+ref
+```
+
+Next, we inspect the metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer.
+
+```{r}
+#| label: ref_annot_2
+
+ref@meta.data
+```
+
+From the metadata, we identify subclass_label as the column that contains cell type annotations. These labels will be used as the ground truth during reference-based annotation of our query dataset. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
+
+```{r}
+#| label: ref_annot_3
+
+ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
+table(ref$subclass_label)
+```
+
+This is a big dataset, for the ease of working and keeping the time and memory requirements low for this workshop we will perform a downsampling. We will do a proportinal downsampling, implying that the cell population proportions are preserved.
+
+```{r}
+#| label: ref_annot_4
+
+set.seed(123)
+cells_use <- rownames(ref@meta.data) %>%
+  split(ref$subclass_label) %>%
+  lapply(function(x) sample(x, size = ceiling(length(x) * 0.3))) %>%
+  unlist()
+
+# Sanity check
+length(cells_use)
+all(cells_use %in% colnames(ref))  # MUST be TRUE
+
+ref_down <- subset(ref, cells = cells_use)
+```
+
+To ensure that the reference and query (sc) datasets are comparable, we now preprocess the reference object using the same normalization and dimensionality reduction strategy applied earlier to the query data. This step is critical, as reference mapping assumes both datasets exist in a compatible feature and latent space.
+
+After normalization, we identify highly variable genes, scale the data, and compute principal components. Finally, we determine the set of genes shared between the reference and query datasets, which will be used to align the two objects during anchor finding.
+
+```{r}
+#| label: ref_annot_5
+
+ref_down <- NormalizeData(ref_down, normalization.method="LogNormalize", scale.factor=100)
+ref_down <- FindVariableFeatures(ref_down)
+ref_down <- ScaleData(ref_down, features = VariableFeatures(ref_down))
+ref_down <- RunPCA(ref_down, features = VariableFeatures(ref_down), npcs = 50)
+
+# finding common genes
+common_genes <- intersect(rownames(ref_down), rownames(sc))
+length(common_genes)
+```
+
+With both datasets processed in a comparable manner, we now identify anchors between the reference and query objects. Anchors represent pairs of biologically similar cells across datasets and form the foundation for transferring information such as cell type labels. Here, we project the query data into the PCA space of the reference to improve alignment.
+
+```{r}
+
+#| label: ref_annot_6
+
+anchors <- FindTransferAnchors(
+  reference = ref_down,
+  query = sc,
+  features = common_genes,
+  reference.assay = "RNA",
+  query.assay = "Xenium",
+  reduction = "pcaproject",
+  dims = 1:30
+)
+```
+
+Once the anchors have been identified, we use them to transfer cell type annotations from the reference to the query dataset. The predicted labels are generated for each query cell based on similarity to reference cells and then stored as new metadata within the query object.
+
+```{r}
+
+#| label: ref_annot_7
+
+predictions <- TransferData(
+  anchorset = anchors,
+  refdata = ref_down$subclass_label,
+  dims = 1:30
+)
+
+# Add predicted labels to sc metadata
+sc <- AddMetaData(sc, metadata = predictions$predicted.id, col.name = "predicted.celltype")
+```
+
+Finally, we visualize the transferred cell type labels using a dimensionality reduction plot. This allows us to assess how well the predicted annotations align with the underlying structure of the query data and to identify potential ambiguities or mixed populations.
+
+```{r}
+#| label: ref_annot_8
+
+DimPlot(sc, group.by = "predicted.celltype") +
+  labs(title = "Predicted cell type labels (sc)")
+```
 
 # Export results to Xenium Explorer
 
