@@ -386,8 +386,8 @@ In spatial transcriptomics, however, total counts can vary systematically across
 #| eval: true
 
 source("scripts/additionalFunctions.R") # load SpaNormWrapper function
-sc = SpaNormWrapper(sc=sc)
-saveRDS(sc, file="sc_normalized.RDS")
+# sc = SpaNormWrapper(sc=sc)
+# saveRDS(sc, file="sc_normalized.RDS")
 ```
 
 This creates a new layer in the assay object called `data` that contains the normalized counts. You can inspect the normalized values like so:
@@ -1046,6 +1046,10 @@ We now perform PCA, clustering, and UMAP on the BANKSY assay. We use the first 1
 ```{r}
 #| label: banksy_2
 
+# Backup original clusters; 'seurat_clusters' will be over-written
+sc$clusters = sc$seurat_clusters
+
+# Process BANKSY data
 sc = RunPCA(sc, reduction.name="banksy_domains_pca", features=rownames(sc[["banksy_domains"]]), npcs=30, nfeatures.print=5)
 sc = FindNeighbors(sc, reduction="banksy_domains_pca", dims=1:30)
 sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
@@ -1065,7 +1069,7 @@ Here we compare the results of default **original clustering, spatially-aware cl
 ```{r}
 #| label: banksy_3
 
-p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
 p2 = DimPlot(sc, reduction="umap", label=TRUE, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
 p3 = DimPlot(sc, reduction="banksy_domains_umap", label=TRUE, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
 p1 | p2 | p3
@@ -1076,9 +1080,9 @@ And as spatial plots:
 ```{r}
 #| label: banksy_4
 
-p1 = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+p1 = ImageDimPlot(sc, group.by="clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
 p2 = ImageDimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
-p3 = ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domain clustering")
+p3 = ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
 p1 | p2 | p3
 ```
 
@@ -1094,10 +1098,10 @@ We can try to evaluate the different approaches by visualizing known marker gene
 
 # Which of the three clusterings best reflects our known biology?
 plist = list()
-plist[[1]] = DotPlot(sc, features=features_to_plot, group.by="xenium_seurat_clusters", cols=cols_clusters, scale=TRUE)
-plist[[2]] = DotPlot(sc, features=features_to_plot, group.by="banksy_cells_clusters", cols=cols_banksy_cells_clusters, scale=TRUE)
+plist[[1]] = DotPlot(sc, features=features_to_plot, group.by="clusters", cols=cols_clusters, scale=TRUE)
+plist[[2]] = DotPlot(sc, features=features_to_plot, group.by="spatialleiden", cols=cols_spatialleiden, scale=TRUE)
 plist[[3]] = DotPlot(sc, features=features_to_plot, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters, scale=TRUE)
-names(plist) = c("Original clustering", "BANKSY cell clustering", "BANKSY domain clustering")
+names(plist) = c("Original clustering", "Spatially-aware clustering", "BANKSY domains")
 print(features_to_plot)
 for (i in seq(plist)) { 
   p = plist[[i]] + viridis::scale_color_viridis() + ggtitle(names(plist)[i]) + 
@@ -1108,32 +1112,17 @@ for (i in seq(plist)) {
 
 ```{r}
 #| label: spatial_9
+#| message: true
 
-# Which of the three UMAPs visualizes features_to_plot best?
-message("Original clusters")
+# Which of the two UMAPs visualizes features_to_plot best?
+message("Original UMAP")
 plist = FeaturePlot(sc, features=features_to_plot, reduction="umap", ncol=2, max.cutoff="q95", combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] & viridis::scale_color_viridis()) }
 
-message("BANKSY cell clusters")
-plist = FeaturePlot(sc, features=features_to_plot, reduction="banksy_cells_umap", ncol=2, max.cutoff="q95", combine=FALSE)
-for (i in seq(plist)) { print(plist[[i]] & viridis::scale_color_viridis()) }
-
-message("BANKSY domain clusters")
+message("BANKSY UMAP")
 plist = FeaturePlot(sc, features=features_to_plot, reduction="banksy_domains_umap", ncol=2, max.cutoff="q95", combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] & viridis::scale_color_viridis()) }
 
-```
-
-Since this BANKSY run is also complete, we again remove the assay and PCA reduction to free up memory:
-
-```{r}
-#| label: spatial_cleanup
-
-# Remove BANKSY assay and pca since not used anymore and we need the memory.
-DefaultAssay(sc) = "Xenium"
-sc[["banksy_cells"]] = NULL
-sc[["banksy_domains"]] = NULL
-gc()
 ```
 
 ::: {.callout-tip}
