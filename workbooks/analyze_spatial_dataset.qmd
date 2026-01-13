@@ -30,7 +30,7 @@ library(grid)       # For other plots
 library(viridis)    # Our continuous color palette
 library(reticulate) # Interface to Python
 
-# Increase maximum allowed object size for running analyses in paralell
+# Increase maximum allowed object size for running analyses in parallel
 options(future.globals.maxSize = Inf)
 
 # Colors
@@ -101,7 +101,7 @@ In this workflow, we work with cell segmentation. The data we read and analyse a
 
 ## Why quality control?
 
-In spatial transcriptomics (as in scRNAseq), not all cells are equally informative. Quality Control (QC) is used to identify and remove low-quality cells from the dataset before further analysis. 
+In spatial transcriptomics (and single-cell RNA-seq), not all cells are equally informative. Quality Control (QC) is used to identify and remove low-quality cells from the dataset before further analysis. 
 
 **Low-quality cells** might be the result of:  
 
@@ -362,7 +362,7 @@ In spatial transcriptomics, however, total counts can vary systematically across
 #| label: preprocessing_1
 #| eval: true
 
-# We have written a small wrapper function so that SpaNorm works with Seurat objects
+# We have written a small wrapper function so that SpaNorm works with Seurat objects.
 # Some additional functions
 #source("scripts/additionalFunctions.R")
 
@@ -490,15 +490,11 @@ VizDimLoadings(sc, reduction="pca", dims=1:4, nfeatures=10, balanced=TRUE)
 
 For example, the genes "Sncb" and "Fn1" contribute to most of the variance captured by PC1 and PC2. This is also visible when plotting:
 
-
 ```{r}
-#| label: preprocessing_13b
+#| label: preprocessing_14
 
 FeaturePlot(sc, reduction="pca", dims=c(1, 2), features=c("Sncb", "Fn1"))
 ```
-
-
-
 
 ::: {.callout-tip}
 ## Learnings
@@ -514,7 +510,7 @@ How many PCs would you choose for further analysis?
 
 In the following, we **cluster** spatial cells based on their gene expression profiles and use **UMAP** (Uniform Manifold Approximation and Projection) to visualize the results in two dimensions.
 
-**Clustering** is typically done using unsupervised algorithms (e.g., Louvain or Leiden) that group cells based on similarities across the full gene expression space. This helps to identify cells that share similar transcriptional signatures, which may (or not) correspond to distinct anatomical structures or functional states. 
+**Clustering** is typically done using unsupervised algorithms (e.g., Louvain or Leiden) that group cells based on similarities across the full gene expression space. This helps to identify cells that share similar transcriptional signatures, which may correspond to distinct anatomical structures or functional states. 
 
 **UMAP** is a dimensionality reduction technique that projects high-dimensional data into a lower-dimensional space, in this case into two dimensions, to reveal underlying structure. In UMAP plots, each cell is shown as a point, allowing us to detect substructures or transitions within clusters, identify outliers or ambiguous regions, communicate findings visually and intuitively. 
 
@@ -658,7 +654,7 @@ barcodes = colnames(data)
 features = rownames(data)
 data = Matrix::t(data)
 
-# Get PCA and set the di
+# Get PCA data
 pca = SeuratObject::Embeddings(sc, "pca")
 pca = as.matrix(pca)
 
@@ -756,7 +752,7 @@ By using these strategies, you can correlate the clusters with biological cell t
 
 ## Cluster marker genes
 
-One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are significantly up- or down-regulated in one cluster compared to all other clusters, and they can be used to characterize the biological identity of the cells in each cluster. 
+One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are up- or down-regulated in one cluster compared to all other clusters, and they can be used to characterize the biological identity of the cells in each cluster. 
 
 A good clustering of cells typically results in good marker genes. Hence, if you cannot find good marker genes you may need to go back to the start of the workflow and adapt your parameters. 
 
@@ -778,7 +774,7 @@ Let us now extract and visualize the top 3 marker genes for each cluster based o
 
 ```{r}
 #| label: clusterannot_2
-
+#| 
 # Solution
 markers_top = markers %>% 
   dplyr::group_by(cluster) %>% 
@@ -850,7 +846,7 @@ plist = VlnPlot(sc, features=features_to_plot, pt.size=0, ncol=1, combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] + NoLegend()) }
 ```
 
-We can also visualize the gene expression directly on top of the **UMAP plot**. This will show the expression of genes such as Acta2 and Apoe across all cells in the low-dimensional UMAP space:
+We can also visualize the gene expression directly on top of the **UMAP plot**. This will show the expression of genes such as Rorb and Camk1d across all cells in the low-dimensional UMAP space:
 
 ```{r}
 #| label: plotting_2
@@ -916,71 +912,82 @@ ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
 
-Next, we inspect the metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer.
+Next, we inspect the cell metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer.
 
 ```{r}
 #| label: ref_annot_2
 
-ref@meta.data
+ref[[]]
 ```
 
-From the metadata, we identify `subclass_label` as the column that contains cell type annotations. These labels will be used as the ground truth during reference-based annotation of our query dataset. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
+From the cell metadata, we use the columns `class_label`and `subclass_label` for our cell type annotations. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
 
 ```{r}
 #| label: ref_annot_3
+
+ref[[]] %>% dplyr::select(class_label) %>% head(10)
+table(ref$class_label)
 
 ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
 table(ref$subclass_label)
 ```
 
-This is a big dataset. For the ease of working and keeping the time and memory requirements low for this workshop we will perform a downsampling. We will do a proportional downsampling, implying that the cell population proportions are preserved.
+This is a big dataset. For the ease of working and keeping the time and memory requirements low for this workshop we will perform a downsampling. We will do a proportional downsampling, implying that the cell population proportions are preserved. Moreover, we will keep only genes that are also present in our Xenium dataset.
 
 ```{r}
 #| label: ref_annot_4
 
+# Sample 30% of cells from each cell type
 set.seed(123)
-cells_use = rownames(ref@meta.data) %>%
+cells_use = rownames(ref[[]]) %>%
   split(ref$subclass_label) %>%
   lapply(function(x) sample(x, size=ceiling(length(x) * 0.3))) %>%
   unlist()
 
 # Sanity check
-length(cells_use)
-all(cells_use %in% colnames(ref))  # MUST be TRUE
+#length(cells_use)
+#all(cells_use %in% colnames(ref))
 
-ref_down = subset(ref, cells=cells_use)
+# Subset ref object to downsampled cells
+ref = subset(ref, cells=cells_use)
+
+# Subset ref object to genes that are also present in the Xenium dataset and that are expressed in at least three cells
+common_genes = intersect(rownames(ref), rownames(sc))
+ref = subset(ref, features=common_genes)
+
+counts = GetAssayData(ref, assay="RNA", layer="counts")
+exp_genes = which(rowSums(counts>0) > 3)
+ref = subset(ref, features=exp_genes)
+
+# Clear memory
+rm(counts)
+gc()
 ```
 
-To ensure that the reference and query (`sc`) datasets are comparable, we now preprocess the reference object in a similar way as we have proprocessed the query object. This step is critical, as reference mapping assumes both datasets exist in a compatible feature and latent space.
-
-After normalization, we identify highly variable genes, scale the data, and compute principal components. Finally, we determine the set of genes shared between the reference and query datasets, which will be used to align the two objects during anchor finding.
+After normalization, we identify highly variable genes, scale the data, and compute principal components.
 
 ```{r}
 #| label: ref_annot_5
 
-ref_down = NormalizeData(ref_down, normalization.method="LogNormalize")
-ref_down = FindVariableFeatures(ref_down)
-ref_down = ScaleData(ref_down, features=VariableFeatures(ref_down))
-ref_down = RunPCA(ref_down, features=VariableFeatures(ref_down), npcs=50)
-
-# finding common genes
-common_genes = intersect(rownames(ref_down), rownames(sc))
-length(common_genes)
+# Preprocess reference dataset
+ref = NormalizeData(ref, normalization.method="LogNormalize")
+ref = FindVariableFeatures(ref)
+ref = ScaleData(ref, features=VariableFeatures(ref))
+ref = RunPCA(ref, features=VariableFeatures(ref), npcs=20)
 ```
 
-With both datasets processed in a comparable manner, we now identify anchors between the reference and query objects. Anchors represent pairs of biologically similar cells across datasets and form the foundation for transferring information such as cell type labels. Here, we project the query data into the PCA space of the reference to improve alignment.
+With both datasets processed, we now identify anchors between the reference and query objects. Anchors represent pairs of biologically similar cells across datasets and form the foundation for transferring information such as cell type labels. Here, we project the query data into the PCA space of the reference to align both datasets.
 
 ```{r}
 #| label: ref_annot_6
 
+# Find anchors between reference and query
 anchors = FindTransferAnchors(
-  reference=ref_down,
+  reference=ref,
   query=sc,
-  features=common_genes,
   reference.assay="RNA",
   query.assay="Xenium",
-  reduction="pcaproject",
-  dims=1:30
+  dims=1:20
 )
 ```
 
@@ -989,28 +996,92 @@ Once the anchors have been identified, we use them to transfer cell type annotat
 ```{r}
 #| label: ref_annot_7
 
+# Transfer column 'class_label' from reference to query. Filter low-confidence predictions (<0.6 but may vary across datasets).
 predictions = TransferData(
   anchorset=anchors,
-  refdata=ref_down$subclass_label,
-  dims=1:30
+  refdata=ref$class_label,
+  dims=1:20
 )
+predictions = predictions[, c("predicted.id", "prediction.score.max")]
+predictions$predicted.id = ifelse(predictions$prediction.score.max < 0.6, NA, predictions$predicted.id)
+colnames(predictions) = c("predicted.cellcategory", "predicted.cellcategory.score")
+sc = AddMetaData(sc, metadata=predictions)
 
-# Add predicted labels to sc metadata
-sc <- AddMetaData(sc, metadata = predictions$predicted.id, col.name = "predicted.celltype")
+# Transfer column 'subclass_label' from reference to query. Filter low-confidence predictions (<0.6 but may vary across datasets).
+predictions = TransferData(
+  anchorset=anchors,
+  refdata=ref$subclass_label,
+  dims=1:20
+)
+predictions = predictions[, c("predicted.id", "prediction.score.max")]
+predictions$predicted.id = ifelse(predictions$prediction.score.max < 0.6, NA, predictions$predicted.id)
+colnames(predictions) = c("predicted.celltype", "predicted.celltype.score")
+sc = AddMetaData(sc, metadata = predictions)
 ```
 
 Finally, we visualize the transferred cell type labels using a dimensionality reduction plot. This allows us to assess how well the predicted annotations align with the underlying structure of the query data and to identify potential ambiguities or mixed populations.
 
+First, we visualize the three general categories of cell types:
+
 ```{r}
 #| label: ref_annot_8
 
-p = DimPlot(sc, group.by="predicted.celltype") + labs(title="Predicted cell type labels")
+barcode_metadata = sc[[]]
+
+p = DimPlot(sc, group.by="predicted.cellcategory") + labs(title="Predicted cell categories")
+p$data$seurat_clusters = barcode_metadata[rownames(p$data), "seurat_clusters"]
+p = LabelClusters(p, "seurat_clusters", box=TRUE)
 p
+```
+
+Then, we visualize the more specific predicted cell types per category:
+
+```{r}
+#| label: ref_annot_9
+
+barcode_metadata = sc[[]]
+
+p = DimPlot(sc, group.by="predicted.celltype")  + labs(title="Predicted cell types")
+p = LabelClusters(p, "seurat_clusters", box=TRUE)
+p
+```
+
+Finally, we compare the predicted cell types with our spatial clusters to evaluate how well the clustering corresponds to known biological identities. We create bar plots to visualize the distribution of predicted cell types within each spatial cluster, both in terms of absolute counts and proportions.
+
+```{r}
+#| label:  ref_annot_10
+#| 
+p1 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
+  scale_fill_discrete(na.value="grey80") +
+  labs(
+    x="Spatial Leiden cluster",
+    y="Number of cells",
+    fill="Predicted cell type"
+  ) +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+
+p2 = ggplot(sc[[]], aes(x=seurat_clusters, fill=predicted.celltype)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_discrete(na.value="grey80") +
+  labs(
+    x = "Spatial Leiden cluster",
+    y = "Cell-type proportion",
+    fill = "Predicted cell type"
+  ) +
+  theme_classic() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+(p1 | p2) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "right")
 ```
 
 # Spatial domains
 
-So far, we analyzed the Xenium data with a Seurat-style single-cell workflow, but swapped in two spatially aware upgrades: `SpaNorm` for normalization and `spatialleiden` for clustering. This gives us clusters that are driven by expression while being encouraged to be spatially coherent.
+So far, we analyzed the Xenium data with a Seurat-style single-cell workflow, but swapped in two spatially-aware upgrades: `SpaNorm` for normalization and `spatialleiden` for clustering. This gives us clusters that are driven by expression while being encouraged to be spatially coherent.
 
 Next, we show a complementary approach: `BANKSY`. The goal is to highlight a different way of using space. While `spatialleiden` adds spatial information at the clustering step, `BANKSY` builds spatial context into the representation itself by enriching each cell’s features with information from its neighborhood. In practice, this often shifts the output from “cell types/states” toward “tissue domains/niches”.
 
@@ -1019,7 +1090,7 @@ Next, we show a complementary approach: `BANKSY`. The goal is to highlight a dif
 [BANKSY](https://github.com/prabhakarlab/Banksy) is a method for spatial transcriptomics that combines two views of each cell:
 
 - the cell’s own expression profile  
-- a summary of the local neighborhood expression (a local average)
+- a summary of the local neighborhood expression ("a local average")
 
 By embedding cells using both components, BANKSY captures cell identity plus microenvironment, which can improve robustness and make larger-scale tissue structure easier to detect.
 
@@ -1028,7 +1099,7 @@ A single parameter, lambda (λ), controls how much neighborhood information is m
 - Lower λ (e.g. 0.2): more “single-cell-like”, useful for cell typing  
 - Higher λ (e.g. 0.8): more “spatial-domain-like”, useful for domain detection
 
-In this workshop, we run BANKSY and then reuse the familiar downstream Seurat steps (PCA/graph/clustering/visualization), so you can directly compare how the two strategies (`spatialleiden` versus `BANKSY`) change what the labels represent.
+In this workshop, we run BANKSY and then reuse the familiar downstream Seurat steps (PCA/graph/clustering/visualization) to identify spatial domains.
 
 ## Identifying spatial domains with BANKSY
 
