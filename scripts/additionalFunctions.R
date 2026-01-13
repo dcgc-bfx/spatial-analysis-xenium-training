@@ -61,7 +61,7 @@ SpaNormWrapper = function(sc) {
     spatialCoords = coords)
 
   # +++ Run SpaNorm +++
-  set.seed(36)
+  set.seed(1)
   spe = SpaNorm(spe)
 
   # +++ Put normalised data back to Seurat +++
