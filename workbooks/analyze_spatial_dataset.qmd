@@ -1159,6 +1159,7 @@ names(cols_banksy_domains_clusters) = levels(sc$banksy_domains_clusters)
 
 # Reset
 DefaultAssay(sc) = "Xenium"
+Idents(sc) = "spatialleiden"
 ```
 
 We plot each domain separately:
@@ -1167,7 +1168,7 @@ We plot each domain separately:
 #| label: banksy_3
 
 banksy_domains_cells = split(colnames(sc), sc$banksy_domains_clusters)
-plist = purrr::map(levels(sc$banksy_domains_clusters), function(dom) {
+plist = lapply(levels(sc$banksy_domains_clusters), function(dom) {
   cols_cluster_cells = ifelse(levels(sc$banksy_domains_clusters) %in% c(dom), "#FFFF00", "grey50")
   names(cols_cluster_cells) = levels(sc$banksy_domains_clusters)
   return(ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_cluster_cells) + ggtitle(paste(dom)) + theme(legend.position="none"))
@@ -1212,9 +1213,9 @@ We can try to evaluate the different approaches by visualizing known marker gene
 
 # Which of the three clusterings best reflects our known biology?
 plist = list()
-plist[[1]] = DotPlot(sc, features=features_to_plot, group.by="clusters", cols=cols_clusters, scale=TRUE)
-plist[[2]] = DotPlot(sc, features=features_to_plot, group.by="spatialleiden", cols=cols_spatialleiden, scale=TRUE)
-plist[[3]] = DotPlot(sc, features=features_to_plot, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters, scale=TRUE)
+plist[[1]] = DotPlot(sc, features=features_to_plot, group.by="clusters", scale=TRUE)
+plist[[2]] = DotPlot(sc, features=features_to_plot, group.by="spatialleiden", scale=TRUE)
+plist[[3]] = DotPlot(sc, features=features_to_plot, group.by="banksy_domains_clusters", scale=TRUE)
 names(plist) = c("Original clustering", "Spatially-aware clustering", "BANKSY domains")
 
 print(features_to_plot)
@@ -1251,11 +1252,36 @@ If you want to learn more about BANKSY, we find these pages helpful:
 
 # Export results to Xenium Explorer
 
+Xenium Explorer allows you to [import custom cell groups](https://www.10xgenomics.com/support/software/xenium-explorer/latest/tutorials/nav-cells#cell-groups), e.g. user-defined clusters or domains. Each cell group needs to be exported as a CSV file with two columns: `cell_id` and `group`. The `cell_id` column contains the cell barcodes, and the `group` column contains the corresponding cluster or domain label. An optional third column `color` can be added to specify colors for each group in [HEX color codes](https://htmlcolorcodes.com/).
+
+Here we export the results of default **original clustering, spatially-aware clustering, and BANKSY domains**:
+
 ```{r}
 #| label: export_results
 
-sessioninfo::session_info()
+# Original clusters
+group_name = "clusters"
+group_data = sc[[group_name]] %>% tibble::rownames_to_column()
+colnames(group_data) = c("cell_id", "group")
+group_data$color = cols_clusters[as.character(group_data$group)]
+write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.names=FALSE, quote=FALSE)
+
+# Spatialleiden clusters
+group_name = "spatialleiden"
+group_data = sc[[group_name]] %>% tibble::rownames_to_column()
+colnames(group_data) = c("cell_id", "group")
+group_data$color = cols_spatialleiden[as.character(group_data$group)]
+write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.names=FALSE, quote=FALSE)
+
+# BANKSY domain clusters
+group_name = "banksy_domains_clusters"
+group_data = sc[[group_name]] %>% tibble::rownames_to_column()
+colnames(group_data) = c("cell_id", "group")
+group_data$color = cols_banksy_domains_clusters[as.character(group_data$group)]
+write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.names=FALSE, quote=FALSE)
 ```
+
+We created three different CSV files that can be imported as "Groups" in the "Cells" pane of the Xenium Explorer.
 
 # Session info
 
