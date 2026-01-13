@@ -64,9 +64,6 @@ SpaNormWrapper = function(sc) {
   set.seed(36)
   spe = SpaNorm(spe)
 
-  # Backup old Seurat object
-  sc_old = sc
-
   # +++ Put normalised data back to Seurat +++
   # Note: it is classical matrix and therefore might be huge
   normalised_data = SingleCellExperiment::logcounts(spe)
