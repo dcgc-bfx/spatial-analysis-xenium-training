@@ -61,11 +61,8 @@ SpaNormWrapper = function(sc) {
     spatialCoords = coords)
 
   # +++ Run SpaNorm +++
-  set.seed(36)
+  set.seed(1)
   spe = SpaNorm(spe)
-
-  # Backup old Seurat object
-  sc_old = sc
 
   # +++ Put normalised data back to Seurat +++
   # Note: it is classical matrix and therefore might be huge
