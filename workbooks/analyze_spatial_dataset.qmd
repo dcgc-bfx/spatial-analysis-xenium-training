@@ -169,7 +169,6 @@ Play around with the thresholds in R. Which threshold would you find best? How m
 
 ```{r}
 #| label: assignment_1
-#| eval: false
 
 # Hint: Check out chunk qc_1 and qc_2 above.
 
@@ -491,7 +490,6 @@ Visualize the PCA for PC2 and PC3.
 
 ```{r}
 #| label: assignment_2
-#| eval: false
 
 # Hint: Check out chunk preprocessing_11 above.
 
@@ -607,7 +605,6 @@ Test different cluster resolutions and observe the number of clusters you receiv
 
 ```{r}
 #| label: assignment_3
-#| eval: false
 
 # Hint: Check out chunk clustering_2 and clustering_3 above.
 
@@ -829,7 +826,6 @@ Try different values for `resolution` and `layer_ratio` for finding spatially-aw
 
 ```{r}
 #| label: assignment_5
-#| eval: false
 
 # Hint: Check out chunks spatial_clustering_3-6 above.
 
@@ -932,7 +928,6 @@ Try to find the identity of one cluster!
 
 ```{r}
 #| label: assignment_6
-#| eval: false
 
 # Get the top 10 cluster marker genes for one cluster of your choice
 cluster_id = 6
@@ -1320,7 +1315,6 @@ Visualize cell annotations by reference mapping for each BANKSY domain.
 
 ```{r}
 #| label: assignment_8
-#| eval: false
 
 # Hint: Check out chunk reference_mapping_10 above.
 
