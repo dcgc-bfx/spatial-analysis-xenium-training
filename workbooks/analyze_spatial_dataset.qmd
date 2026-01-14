@@ -3,7 +3,9 @@ title: "🧬 Spatial Transcriptomics Data Analysis"
 format: html
 ---
 
-# Welcome to our training on spatial transcriptomics data analysis
+# Welcome 
+
+Welcome to our training on spatial transcriptomics data analysis!  
 
 Spatial transcriptomics allows us to measure gene expression across tissue sections while preserving spatial information, helping us understand not just **what** genes are active, but **where** they are active.
 
