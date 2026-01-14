@@ -539,7 +539,7 @@ How many PCs would you choose for further analysis?
 :::
 
 ```{r}
-#|label: rm_2
+#| label: rm_2
 
 # Clean up 
 rm(data, normalized_data, scale_data)
@@ -841,7 +841,7 @@ Idents(sc) = "spatialleiden"
 ```
 
 ```{r}
-#|label: rm_3
+#| label: rm_3
 
 # Clean up 
 rm(data, pca)
@@ -1184,7 +1184,7 @@ How well do the predicted cell types correspond to the spatial clusters?
 :::
 
 ```{r}
-#|label: rm_4
+#| label: rm_4
 
 # Clean up 
 rm(counts)
