@@ -19,7 +19,7 @@ execute:
 knitr:
   opts_chunk:
     timeit: true
-    dpi: 400
+    dpi: 200
     fig-width: 8
     fig-height: 5
     dev:
