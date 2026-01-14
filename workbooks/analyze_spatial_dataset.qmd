@@ -1,5 +1,5 @@
 ---
-title: "🧬 Spatial Transcriptomics Analysis (part 2)"
+title: "🧬 Spatial Transcriptomics Data Analysis"
 format: html
 ---
 
@@ -138,7 +138,7 @@ p1 | p2
 summary(sc$nCount_Xenium)
 
 # Find a cutoff
-cut_nCount = 30
+cut_nCount = 50
 p3 = ggplot(sc[[]], aes(x=nCount_Xenium)) + geom_histogram(fill="black", bins=500) + xlim(c(0, 1000)) + theme_minimal() + 
   geom_vline(xintercept=cut_nCount, color=cal_pal50[1]) +
   ggtitle("Histogram of nCount_Xenium")
@@ -156,23 +156,34 @@ If they form a distinct pattern, reconsider the threshold — you might be remov
 #| label: qc_2
 
 sc$filtered_nCount = ifelse(sc$nCount_Xenium<cut_nCount, "filtered", "kept")
-ImageDimPlot(sc, group.by="filtered_nCount", cols=c(filtered="#FFFF00", kept="grey50"))
+p = ImageDimPlot(sc, group.by="filtered_nCount", cols=c(filtered="#FFFF00", kept="grey50"))
+p
 ```
 
 ::: {.callout-note}
-### Assignment
-Play around with the thresholds in R. Which threshold would you find best?
+### Assignment 1
+Play around with the thresholds in R. Which threshold would you find best? How many cells are filtered with `cut_nCount=50`?
 :::
 
 ```{r}
 #| label: assignment_1
 #| eval: false
 
+# Hint: Check out chunk qc_1 and qc_2 above.
+
+```
+
+```{r}
+#| label: assignment_1_restore
+
+# Restore variables
+cut_nCount = 50
+sc$filtered_nCount = ifelse(sc$nCount_Xenium<cut_nCount, "filtered", "kept")
 ```
 
 ## Number of genes per cell
 
-This tells us how many genes are detected per cell — essentially a measure of complexity.
+This tells us how many genes are detected per cell. This is essentially a measure of complexity.
 
 ```{r}
 #| label: qc_3
@@ -262,9 +273,8 @@ p6
 ```
 
 ::: {.callout-note}
-### Questions  
-
-What do you think about the relation of low QC and segmentation by nuclear expansion?   
+## Question 1
+What do you think about the relation of QC and segmentation method?   
 What are the trade-offs of stricter vs. more lenient filtering?     
 :::
 
@@ -336,7 +346,7 @@ sc
 ```
 
 ::: {.callout-tip}
-### Best practices
+## Best practices
 * Avoid "one-size-fits-all" thresholds; adjust for every sample
 * Make sure to check the spatial distribution of filtered cells to avoid removing spatial patterns
 * At the beginning, run a full analysis (until clustering) without filtering 
@@ -344,6 +354,14 @@ sc
   * Plot QC metrics per cluster and identify clusters without or with ambiguous cell type
   * Then adjust filtering criteria accordingly and repeat
 :::
+
+```{r}
+#|label: rm_1
+
+# Clean up 
+rm(counts)
+gc()
+```
 
 # Preprocessing
 
@@ -374,12 +392,12 @@ In spatial transcriptomics, however, total counts can vary systematically across
 
 # SpaNorm takes about 50 minutes to run. To save time, we have precomputed the normalized counts and saved them to disk for you.
 #sc = SpaNormWrapper(sc)
-#normalised_data = GetAssayData(sc, assay="Xenium", layer="data")
-#saveRDS(normalised_data, "datasets/spanorm.rds")
+#normalized_data = GetAssayData(sc, assay="Xenium", layer="data")
+#saveRDS(normalized_data, "datasets/spanorm.rds")
 
 # Load precomputed normalized counts
-normalised_data = readRDS("datasets/spanorm.rds")
-sc = SeuratObject::SetAssayData(sc, layer="data", new.data=normalised_data, assay="Xenium")
+normalized_data = readRDS("datasets/spanorm.rds")
+sc = SeuratObject::SetAssayData(sc, layer="data", new.data=normalized_data, assay="Xenium")
 ```
 
 This creates a new layer in the assay object called `data` that contains the normalized counts. You can inspect the normalized values like so:
@@ -460,11 +478,12 @@ Visualize first two PCs:
 ```{r}
 #| label: preprocessing_11
 
-DimPlot(sc, reduction="pca", dims=c(1, 2))
+p = DimPlot(sc, reduction="pca", dims=c(1, 2))
+p
 ```
 
 ::: {.callout-note}
-### Assignment
+### Assignment 2 
 Visualize the PCA for PC2 and PC3. 
 :::
 
@@ -472,10 +491,12 @@ Visualize the PCA for PC2 and PC3.
 #| label: assignment_2
 #| eval: false
 
+# Hint: Check out chunk preprocessing_11 above.
+
 ```
 
 ::: {.callout-note}
-### Question
+### Question 2
 What do we learn from the PCA plot? 
 :::
 
@@ -513,9 +534,17 @@ Helpful YouTube video on PCA in the context of gene expression analysis is [here
 :::
 
 ::: {.callout-note}
-### Question
+## Question 3
 How many PCs would you choose for further analysis? 
 :::
+
+```{r}
+#|label: rm_2
+
+# Clean up 
+rm(data, normalized_data, scale_data)
+gc()
+```
 
 # Clustering and visualization
 
@@ -554,6 +583,9 @@ We will start with a resolution of 0.5, but this can be adjusted later depending
 
 # method="igraph" is necessary for Seurat versions < 5.2
 sc = FindClusters(sc, resolution=.5, algorithm="leiden", random.seed=1)
+
+# Backup 
+sc$seurat_clusters_backup = sc$seurat_clusters
 ```
 
 The clusters are saved as cell metadata column `seurat_clusters`. Let us summarize the clustering of the dataset:
@@ -567,7 +599,7 @@ table(sc$seurat_clusters)
 Note that we can provide multiple resolution values to test different clustering resolutions.
 
 ::: {.callout-note}
-### Assignment
+### Assignment 3
 Test different cluster resolutions and observe the number of clusters you receive. 
 :::
 
@@ -575,6 +607,16 @@ Test different cluster resolutions and observe the number of clusters you receiv
 #| label: assignment_3
 #| eval: false
 
+# Hint: Check out chunk clustering_2 and clustering_3 above.
+
+```
+
+```{r}
+#| label: assignment_3_restore
+
+# Restore
+sc$seurat_clusters = sc$seurat_clusters_backup
+Idents(sc) = "seurat_clusters"
 ```
 
 ```{r}
@@ -606,7 +648,7 @@ p1 | p2
 ```
 
 ::: {.callout-note}
-### Assignment
+### Assignment 4
 
 The parameter `dims` specifies how many PCs (and hence information) we use as input for UMAP. Similarly, the parameter `n.neighbors` controls how UMAP balances local (few neighbors) versus global structure (many neighbors) in the data.
 
@@ -615,7 +657,10 @@ Plot the old and new UMAP next to each other for comparison.
 :::
 
 ```{r}
-#| label: clustering_4_5_test
+#| label: assignment_4
+
+# Hint: Use the below code and "play" with the parameters dims and n.neighbors.
+
 sc = RunUMAP(sc, reduction="pca", reduction.name="umap.test", dims=1:5, n.neighbors=30, seed.use=1)
 
 p1 = DimPlot(sc, reduction="umap", label=TRUE) + NoLegend()
@@ -650,7 +695,7 @@ p1
 :::
 
 ::: {.callout-note}
-## Question   
+## Question 4   
 * How many clusters do we have?    
 * What can we already say about the clusters we have now?   
 :::
@@ -736,6 +781,9 @@ sc = AddMetaData(sc, metadata=cluster_results)
 
 # Let's focus on spatial clusters from here on 
 Idents(sc) = "spatialleiden"
+
+# Backup
+sc$spatialleiden_backup = sc$spatialleiden
 ```
 
 Bring the cluster labels back into Seurat metadata and compare UMAPs and tissue plots of expression-only vs spatially-informed clusters.
@@ -744,16 +792,17 @@ Bring the cluster labels back into Seurat metadata and compare UMAPs and tissue 
 #| label: spatial_clustering_4
 
 # Cluster colors
-cols_spatialleiden = cal_pal50[1:length(levels(sc$spatialleiden))]
+cols_spatialleiden = sample(cal_pal50[1:length(levels(sc$spatialleiden))])
 names(cols_spatialleiden) = levels(sc$spatialleiden)
 ```
 
 ```{r}
 #| label: spatial_clustering_5
 
-p1 = DimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) 
-p2 = DimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) 
-p1 | p2
+p1 = DimPlot(sc, group.by="seurat_clusters", cols=cols_clusters, label=TRUE) 
+p2 = DimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden, label=TRUE) 
+p1
+p2
 ```
 
 ```{r}
@@ -762,6 +811,43 @@ p1 | p2
 p1 = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) 
 p2 = ImageDimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) 
 p1 | p2
+```
+
+::: {.callout-note}
+### Question 5
+
+Compare the expression-only clusters with the spatially-aware clusters. What differences do you observe? Do the spatial clusters make more sense biologically?
+:::
+
+::: {.callout-note}
+### Assignment 5
+
+Try different values for `resolution` and `layer_ratio` for finding spatially-aware clusters, to see how they affect the clustering results.
+:::
+
+```{r}
+#| label: assignment_5
+#| eval: false
+
+# Hint: Check out chunks spatial_clustering_3-6 above.
+
+```
+
+```{r}
+#| label: assignment_5_restore
+
+# Restore
+sc$spatialleiden = sc$spatialleiden_backup
+sc$seurat_clusters = sc$seurat_clusters_backup
+Idents(sc) = "spatialleiden"
+```
+
+```{r}
+#|label: rm_3
+
+# Clean up 
+rm(data, pca)
+gc()
 ```
 
 # Cluster annotation
@@ -776,7 +862,7 @@ By using these strategies, you can correlate the clusters with biological cell t
 
 ## Cluster marker genes
 
-One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are up- or down-regulated in one cluster compared to all other clusters, and they can be used to characterize the biological identity of the cells in each cluster. 
+One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are up- or down-regulated in one cluster compared to all other clusters, and they can be used to characterize the biological identity of the cells in each cluster.
 
 A good clustering of cells typically results in good marker genes. Hence, if you cannot find good marker genes you may need to go back to the start of the workflow and adapt your parameters. 
 
@@ -785,7 +871,7 @@ Resulting *p*-values are adjusted using the Bonferroni method. However, beware t
 You can use Seurat `FindAllMarkers` function to identify differentially expressed genes between clusters:
 
 ```{r}
-#| label: clusterannot_1
+#| label: cluster_markers_1
 
 markers = FindAllMarkers(object=sc,
                          test.use="wilcox",
@@ -797,9 +883,8 @@ markers = FindAllMarkers(object=sc,
 Let us now extract and visualize the top 3 marker genes for each cluster based on the adjusted p-value and log2 foldchange: 
 
 ```{r}
-#| label: clusterannot_2
+#| label: cluster_markers_2
 
-# Solution
 markers_top = markers %>% 
   dplyr::group_by(cluster) %>% 
   dplyr::arrange(p_val_adj, avg_log2FC) %>% 
@@ -816,7 +901,7 @@ gt::gt(markers_top) %>%
 Good marker genes are highly and possibly even only expressed in one cluster as compared to all other clusters. However, sometimes marker genes are also expressed in other clusters, or are declared as marker genes in these clusters, for example cell lineage markers that are shared by different cell sub types. To evaluate marker genes, it is essential to visualize their expression patterns.
 
 ```{r}
-#| label: clusterannot_3
+#| label: cluster_markers_3
 #| fig-height: 8
 #| fig-width: 12
 
@@ -830,27 +915,39 @@ DotPlot(sc, features=markers_top$gene %>% unique()) +
 ```
 
 ::: {.callout-note}
-### Question
+### Question 6
 Take a good look at the dot plot. Which clusters do / do not have good marker genes? 
 :::
 
-## Functional enrichment analysis
+### Functional enrichment analysis
 
 We can use the identified cluster marker genes to perform functional enrichment analysis. This helps us infer the potential biological identity or function of each cluster. For simplicity, we will use the online tool [Enrichr](https://maayanlab.cloud/Enrichr/) to perform this analysis. 
 
 ::: {.callout-note}
-### Assignment
+### Assignment 6
 Try to find the identity of one cluster! 
 :::
 
-## Plotting known marker genes
+```{r}
+#| label: assignment_6
+#| eval: false
+
+# Get the top 10 cluster marker genes for one cluster of your choice
+cluster_id = 6
+markers %>% dplyr::filter(cluster==cluster_id) %>% 
+  dplyr::arrange(p_val_adj, avg_log2FC) %>% 
+  dplyr::slice_head(n=10) %>%
+  dplyr::pull(gene)
+```
+
+## Known marker genes
 
 To further explore the results and visualize gene expression for known marker genes across different clusters, we can use various plotting functions.
 
 A **violin plot** allows us to visualize the distribution of gene expression across clusters.
 
 ```{r}
-#| label: plotting_1
+#| label: known_markers_1
 
 features_to_plot = c(Cortex_layer4="Rorb", 
                      Cortex_layer5="Etv1", 
@@ -871,7 +968,7 @@ for (i in seq(plist)) { print(plist[[i]] + NoLegend()) }
 We can also visualize the gene expression directly on top of the **UMAP plot**. This will show the expression of genes such as Rorb and Camk1d across all cells in the low-dimensional UMAP space:
 
 ```{r}
-#| label: plotting_2
+#| label: known_markers_2
 
 plist = FeaturePlot(sc, features=features_to_plot, ncol=2, max.cutoff="q95", combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] + viridis::scale_color_viridis()) }
@@ -880,7 +977,7 @@ for (i in seq(plist)) { print(plist[[i]] + viridis::scale_color_viridis()) }
 Since we are working with spatial data, you can visualize gene expression in the **spatial context**, showing where the genes are expressed on the tissue section:
 
 ```{r}
-#| label: plotting_3
+#| label: known_markers_3
 
 plist = ImageFeaturePlot(sc, features=features_to_plot, max.cutoff="q95", combine=FALSE)
 for (i in seq(plist)) { print(plist[[i]] + viridis::scale_fill_viridis()) }
@@ -891,7 +988,7 @@ A **dot plot** allows for the visualization of gene expression across multiple c
 For a more detailed look, we can create a **heatmap** to visualize the expression of the same genes in a subset of cells (10000). This allows for a more focused analysis of gene expression patterns across specific clusters.
 
 ```{r}
-#| label: plotting_5
+#| label: known_markers_4
 
 set.seed(1)
 cluster_cells = Cells(sc) %>% 
@@ -905,25 +1002,14 @@ DoHeatmap(sc, features=features_to_plot,
   guides(colour="none")
 ```
 
-```{r}
-#| label: rm_1
+## Reference mapping
 
-# Remove since not used anymore and we need the memory.
-rm(counts, data, scale_data, umap)
+### Load and prepare the reference dataset
 
-# R will automatically clear the memory of freed objects whenever it needs more space.
-# But in our experience it is sometimes better to explicitly tell R to do this - especially when working with big objects.
-gc()
-```
-
-# Cell type annotation by reference mapping
-
-## Load and prepare the reference dataset
-
-We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1), which is provided as a preprocessed Seurat object. This dataset contains well-annotated single-cell RNA-seq profiles and will serve as our reference atlas for cell type annotation. The file is stored locally as an .Rds object under the `datasets folder`; if it is not present, refer to `datasets/download.R` to retrieve it.
+We begin by loading the [Allen Brain single-cell reference dataset](https://brain-map.org/our-research/cell-types-taxonomies/cell-types-database-rna-seq-data), which is provided as a preprocessed Seurat object. This dataset contains well-annotated single-cell RNA-seq profiles and will serve as our reference atlas for cell type annotation. The file is stored locally as an .Rds object under the `datasets folder`; if it is not present, refer to `datasets/download.R` to retrieve it.
 
 ```{r}
-#| label: ref_annot_1
+#| label: reference_mapping_1
 
 ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
@@ -932,7 +1018,7 @@ ref
 Next, we inspect the cell metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer. Here are the different cell metadata columns:
 
 ```{r}
-#| label: ref_annot_2
+#| label: reference_mapping_2
 
 colnames(ref[[]])
 ```
@@ -940,7 +1026,7 @@ colnames(ref[[]])
 From the cell metadata, we use the columns `class_label`and `subclass_label` for our cell type annotations. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
 
 ```{r}
-#| label: ref_annot_3
+#| label: reference_mapping_3
 
 ref[[]] %>% dplyr::select(class_label) %>% head(10)
 table(ref$class_label)
@@ -952,7 +1038,7 @@ table(ref$subclass_label)
 This is a big dataset. For the ease of working and keeping the time and memory requirements low for this workshop we will perform a downsampling. We will do a proportional downsampling, implying that the cell population proportions are preserved. Moreover, we will keep only genes that are also present in our Xenium dataset.
 
 ```{r}
-#| label: ref_annot_4
+#| label: reference_mapping_4
 
 # Sample 30% of cells from each cell type
 set.seed(1)
@@ -960,10 +1046,6 @@ cells_use = rownames(ref[[]]) %>%
   split(ref$subclass_label) %>%
   lapply(function(x) sample(x, size=ceiling(length(x) * 0.3))) %>%
   unlist()
-
-# Sanity check
-#length(cells_use)
-#all(cells_use %in% colnames(ref))
 
 # Subset ref object to downsampled cells
 ref = subset(ref, cells=cells_use)
@@ -975,16 +1057,12 @@ ref = subset(ref, features=common_genes)
 counts = GetAssayData(ref, assay="RNA", layer="counts")
 exp_genes = which(rowSums(counts>0) > 3)
 ref = subset(ref, features=exp_genes)
-
-# Clear memory
-rm(counts)
-gc()
 ```
 
 After normalization, we identify highly variable genes, scale the data, and compute principal components.
 
 ```{r}
-#| label: ref_annot_5
+#| label: reference_mapping_5
 
 # Preprocess reference dataset
 ref = NormalizeData(ref, normalization.method="LogNormalize")
@@ -993,12 +1071,12 @@ ref = ScaleData(ref, features=VariableFeatures(ref))
 ref = RunPCA(ref, features=VariableFeatures(ref), npcs=30, seed.use=1)
 ```
 
-## Annotation by label transfer
+### Annotation by label transfer
 
 With both datasets processed, we now identify anchors between the reference and query objects. Anchors represent pairs of biologically similar cells across datasets and form the foundation for transferring information such as cell type labels. Here, we project the query data into the PCA space of the reference to align both datasets.
 
 ```{r}
-#| label: ref_annot_6
+#| label: reference_mapping_6
 
 # This chunk will take roughly 8 minutes to run.
 
@@ -1015,61 +1093,69 @@ anchors = FindTransferAnchors(
 Once the anchors have been identified, we use them to transfer cell type annotations from the reference to the query dataset. The predicted labels are generated for each query cell based on similarity to reference cells and then stored as new metadata within the query object.
 
 ```{r}
-#| label: ref_annot_7
+#| label: reference_mapping_7
 
-# Transfer column 'class_label' from reference to query. Filter low-confidence predictions (<0.6 but may vary across datasets).
+# Transfer column 'class_label' from reference to query
 predictions = TransferData(
   anchorset=anchors,
   refdata=ref$class_label,
-  dims=1:30
+  dims=1:20
 )
+
+# Filter low-confidence predictions (<0.6 but may vary across datasets)
 predictions = predictions[, c("predicted.id", "prediction.score.max")]
-predictions$predicted.id = ifelse(predictions$prediction.score.max < 0.6, NA, predictions$predicted.id) %>% as.factor()
+predictions$predicted.id = ifelse(predictions$prediction.score.max < 0.6, "NA", predictions$predicted.id) %>% as.factor()
+predictions$predicted.id = forcats::fct_relevel(predictions$predicted.id, "NA", after=Inf)
 colnames(predictions) = c("predicted.cellcategory", "predicted.cellcategory.score")
 sc = AddMetaData(sc, metadata=predictions)
 
-# Transfer column 'subclass_label' from reference to query. Filter low-confidence predictions (<0.6 but may vary across datasets).
+# Transfer column 'subclass_label' from reference to query
 predictions = TransferData(
   anchorset=anchors,
   refdata=ref$subclass_label,
-  dims=1:30
+  dims=1:20
 )
+
+# Filter low-confidence predictions (<0.6 but may vary across datasets)
 predictions = predictions[, c("predicted.id", "prediction.score.max")]
-predictions$predicted.id = ifelse(predictions$prediction.score.max < 0.6, NA, predictions$predicted.id)  %>% as.factor()
+predictions$predicted.id = ifelse(predictions$prediction.score.max < 0.6, "NA", predictions$predicted.id)  %>% as.factor()
+predictions$predicted.id = forcats::fct_relevel(predictions$predicted.id, "NA", after=Inf)
 colnames(predictions) = c("predicted.celltype", "predicted.celltype.score")
 sc = AddMetaData(sc, metadata=predictions)
 ```
 
-Finally, we visualize the transferred cell type labels using a dimensionality reduction plot. This allows us to assess how well the predicted annotations align with the underlying structure of the query data and to identify potential ambiguities or mixed populations.
-
-First, we visualize the three general categories of cell types in UMAP and spatial context:
+Finally, we visualize the transferred cell type labels on the UMAP and in spatial context. This allows us to assess how well the predicted annotations align with the underlying structure of the query data and to identify potential ambiguities or mixed populations.
 
 ```{r}
-#| label: ref_annot_8
+#| label: reference_mapping_8
 #| fig-height: 7
 
 p1 = DimPlot(sc, group.by="predicted.cellcategory") + labs(title="Predicted cell categories") + theme(legend.position="bottom")
 
-p2 = ImageDimPlot(sc, group.by="predicted.cellcategory") + guides(fill="none", alpha="none")
-(p1 | p2) + plot_layout(guides="collect") & theme(legend.position = "bottom")
+p2 = ImageDimPlot(sc, group.by="predicted.cellcategory", dark.background=FALSE) + 
+  guides(fill="none", alpha="none") + 
+  theme(panel.background=element_rect(fill="black"), panel.grid=element_blank())
+(p1 | p2) + plot_layout(guides="collect") & theme(legend.position="bottom")
 ```
 
-Then, we visualize the more specific predicted cell types per category in UMAP and spatial context:
+Then, we visualize the more specific predicted cell types per category on the UMAP and in spatial context:
 
 ```{r}
-#| label: ref_annot_9
+#| label: reference_mapping_9
 #| fig-height: 7
 
 p1 = DimPlot(sc, group.by="predicted.celltype") + labs(title="Predicted cell types") + theme(legend.position="bottom")
 
-p2 = ImageDimPlot(sc, group.by="predicted.celltype") + guides(fill="none", alpha="none")
-(p1 | p2) + plot_layout(guides="collect") & theme(legend.position = "bottom")
+p2 = ImageDimPlot(sc, group.by="predicted.celltype", dark.background=FALSE) + 
+  guides(fill="none", alpha="none") + 
+  theme(panel.background=element_rect(fill="black"), panel.grid=element_blank())
+(p1 | p2) + plot_layout(guides="collect") & theme(legend.position="bottom")
 ```
 
 Finally, we compare the predicted cell types with our spatial clusters to evaluate how well the clustering corresponds to known biological identities. We create bar plots to visualize the distribution of predicted cell types within each spatial cluster, both in terms of absolute counts and proportions.
 
 ```{r}
-#| label:  ref_annot_10
+#| label:  reference_mapping_10
 #| 
 p1 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
   geom_bar(position = "stack") +
@@ -1081,7 +1167,7 @@ p1 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
   theme_classic() +
   theme(axis.text.x=element_text(angle=45, hjust=1), legend.title=element_blank())
 
-p2 = ggplot(sc[[]], aes(x=seurat_clusters, fill=predicted.celltype)) +
+p2 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
   geom_bar(position = "fill") +
   scale_y_continuous(labels = scales::percent) +
   scale_fill_discrete(na.value="grey80") +
@@ -1095,7 +1181,20 @@ p2 = ggplot(sc[[]], aes(x=seurat_clusters, fill=predicted.celltype)) +
   plot_layout(guides = "collect") & theme(legend.position = "bottom")
 ```
 
-# Spatial domains
+::: {.callout-note}
+### Question 7
+How well do the predicted cell types correspond to the spatial clusters? 
+:::
+
+```{r}
+#|label: rm_4
+
+# Clean up 
+rm(counts)
+gc()
+```
+
+# BANKSY for spatial domains
 
 So far, we analyzed the Xenium data with a Seurat-style single-cell workflow, but swapped in two spatially-aware upgrades: `SpaNorm` for normalization and `spatialleiden` for clustering. This gives us clusters that are driven by expression while being encouraged to be spatially coherent.
 
@@ -1126,9 +1225,6 @@ In the following example, we set `lambda=0.8` and `k_geom=50` to include more ne
 ```{r}
 #| label: banksy_1
 
-# Backup original clusters; 'seurat_clusters' will be over-written
-sc$clusters = sc$seurat_clusters
-
 # Run BANKSY on the highly-variable genes
 DefaultAssay(sc) = "Xenium"
 sc = RunBanksy(sc,
@@ -1139,8 +1235,6 @@ sc = RunBanksy(sc,
 
 # Set it as default
 DefaultAssay(sc) = "banksy_domains"
-
-gc()
 ```
 
 The BANKSY data is already normalized and scaled. We now perform PCA, clustering, and UMAP on the BANKSY assay. We use the first 10 PCs and a clustering resolution of 0.5, but these values should again be adjusted depending on your dataset:
@@ -1151,7 +1245,7 @@ The BANKSY data is already normalized and scaled. We now perform PCA, clustering
 # Process BANKSY data
 sc = RunPCA(sc, reduction.name="banksy_domains_pca", features=rownames(sc[["banksy_domains"]]), npcs=30, nfeatures.print=5, seed.use=1)
 sc = FindNeighbors(sc, reduction="banksy_domains_pca", dims=1:30)
-sc = FindClusters(sc, resolution=0.2, algorithm="leiden", graph.name="banksy_domains_snn", random.seed=1)
+sc = FindClusters(sc, resolution=0.5, algorithm="leiden", graph.name="banksy_domains_snn", random.seed=1)
 sc = RunUMAP(sc, reduction="banksy_domains_pca", reduction.name="banksy_domains_umap", dims=1:30, seed.use=1)
 sc$banksy_domains_clusters = sc$seurat_clusters
 
@@ -1159,8 +1253,9 @@ sc$banksy_domains_clusters = sc$seurat_clusters
 cols_banksy_domains_clusters = rev(cal_pal50)[1:length(levels(sc$banksy_domains_clusters))]
 names(cols_banksy_domains_clusters) = levels(sc$banksy_domains_clusters)
 
-# Reset
+# Restore
 DefaultAssay(sc) = "Xenium"
+sc$seurat_clusters = sc$seurat_clusters_backup
 Idents(sc) = "spatialleiden"
 ```
 
@@ -1175,20 +1270,27 @@ plist = lapply(levels(sc$banksy_domains_clusters), function(dom) {
   names(cols_cluster_cells) = levels(sc$banksy_domains_clusters)
   return(ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_cluster_cells) + ggtitle(paste(dom)) + theme(legend.position="none"))
 })
-wrap_plots(plist, ncol=5)
+plist
 ```
 
+::: {.callout-note}
+### Assignment 7
+How well do the determined BANKSY domains relate to the known Brain atlas? 
 
-Here we compare the results of default **original clustering, spatially-aware clustering, and BANKSY domains**, first using UMAP plots:
+Compare your results to the [Allen Brain Atlas](https://atlas.brain-map.org/atlas?atlas=1&structure=657#atlas=1&structure=733&resolution=11.97&x=5347.999790736608&y=3855.0476074218755&zoom=-3&plate=100960084&z=6).
+:::
+
+Let us compare the results of default **original clustering, spatially-aware clustering, and BANKSY domains**, first using UMAP plots:
 
 ```{r}
 #| label: banksy_4
 
-plist = list()
-plist[[1]] = DimPlot(sc, reduction="umap", label=TRUE, group.by="clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
-plist[[2]] = DimPlot(sc, reduction="umap", label=TRUE, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
-plist[[3]] = DimPlot(sc, reduction="banksy_domains_umap", label=TRUE, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
-wrap_plots(plist, ncol=2)
+p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+p2 = DimPlot(sc, reduction="umap", label=TRUE, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
+p3 = DimPlot(sc, reduction="banksy_domains_umap", label=TRUE, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
+p1
+p2
+p3
 ```
 
 And as spatial plots:
@@ -1197,50 +1299,37 @@ And as spatial plots:
 #| label: banksy_5
 
 plist = list()
-plist[[1]] = ImageDimPlot(sc, group.by="clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+plist[[1]] = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
 plist[[2]] = ImageDimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
 plist[[3]] = ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
-wrap_plots(plist, ncol=3)
+patchwork::wrap_plots(plist, ncol=3)
 ```
 
 We encourage you to systematically explore different parameter settings for `lambda`, `k_geom`, and `resolution` to assess their impact on clustering outcomes and spatial domain resolution.
 
 ## Can we evaluate the generated analyses?
 
-We can try to evaluate the different approaches by visualizing known marker genes. Which of the produced results best reflects the different cell types we know? 
+We generated three different cell groupings: original clustering, spatially-aware clustering, and BANKSY domains. We can now study the groupings further to learn about the underlying biology. 
+
+::: {.callout-note}
+### Assignment 8   
+Visualize cell annotations by reference mapping for each BANKSY domain. 
+:::
 
 ```{r}
-#| label: banksy_6
-#| fig-width: 10
+#| label: assignment_8
+#| eval: false
 
-# Which of the three clusterings best reflects our known biology?
-plist = list()
-plist[[1]] = DotPlot(sc, features=features_to_plot, group.by="clusters", scale=TRUE)
-plist[[2]] = DotPlot(sc, features=features_to_plot, group.by="spatialleiden", scale=TRUE)
-plist[[3]] = DotPlot(sc, features=features_to_plot, group.by="banksy_domains_clusters", scale=TRUE)
-names(plist) = c("Original clustering", "Spatially-aware clustering", "BANKSY domains")
-
-print(features_to_plot)
-for (i in seq(plist)) { 
-  p = plist[[i]] + viridis::scale_color_viridis() + ggtitle(names(plist)[i]) + 
-    theme(strip.text.x=element_blank()) 
-  print(p)
-}
-```
-
-```{r}
-#| label: banksy_7
-
-# Which of the two UMAPs visualizes features_to_plot best?
-message("Original UMAP")
-plist = FeaturePlot(sc, features=features_to_plot, reduction="umap", ncol=2, max.cutoff="q95", combine=FALSE)
-for (i in seq(plist)) { print(plist[[i]] & viridis::scale_color_viridis()) }
-
-message("BANKSY UMAP")
-plist = FeaturePlot(sc, features=features_to_plot, reduction="banksy_domains_umap", ncol=2, max.cutoff="q95", combine=FALSE)
-for (i in seq(plist)) { print(plist[[i]] & viridis::scale_color_viridis()) }
+# Hint: Check out chunk reference_mapping_10 above.
 
 ```
+
+::: {.callout-note}
+### Assignment 9 
+Compare our original clusters, spatially-aware clusters, and BANKSY domains with the Allen Brain atlas. What do you learn from it?   
+  
+What else would you do to study the different clustering results?
+:::
 
 ::: {.callout-tip}
 ## Recommended reading
@@ -1256,7 +1345,7 @@ If you want to learn more about BANKSY, we find these pages helpful:
 
 Xenium Explorer allows you to [import custom cell groups](https://www.10xgenomics.com/support/software/xenium-explorer/latest/tutorials/nav-cells#cell-groups), e.g. user-defined clusters or domains. Each cell group needs to be exported as a CSV file with two columns: `cell_id` and `group`. The `cell_id` column contains the cell barcodes, and the `group` column contains the corresponding cluster or domain label. An optional third column `color` can be added to specify colors for each group in [HEX color codes](https://htmlcolorcodes.com/).
 
-Here we export the results of default **original clustering, spatially-aware clustering, and BANKSY domains**:
+Here we export the results of default **original clustering, spatially-aware clustering, and BANKSY domains** as CSV files. These files can be imported as "Groups" in the "Cells" pane of the Xenium Explorer. 
 
 ```{r}
 #| label: export_results
@@ -1283,7 +1372,10 @@ group_data$color = cols_banksy_domains_clusters[as.character(group_data$group)]
 write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.names=FALSE, quote=FALSE)
 ```
 
-We created three different CSV files that can be imported as "Groups" in the "Cells" pane of the Xenium Explorer. Feel free to give it a try.
+::: {.callout-note}
+### Assignment 10
+If time permits, open Xenium Explorer and import the generated CSV files to visualize and explore the different clustering results within the spatial context of the tissue.
+:::
 
 # Session info
 

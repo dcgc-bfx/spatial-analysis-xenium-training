@@ -60,6 +60,15 @@ You are welcome to contribute and develop the code further!
 
 ::::
 
+## Netiquette
+
+We prepared code - let us run it in sync with each other  
+(do not run your code ahead of the trainer)
+
+&nbsp;
+
+Ask questions - we are here to help you!
+
 ## LinkedIn
 
 Follow us on LinkedIn for updates on future trainings and events!   
@@ -71,6 +80,11 @@ https://www.linkedin.com/company/dresden-concept-genome-center/
 https://www.linkedin.com/in/katrinsameith/   
 https://www.linkedin.com/in/ulrike-anne-friedrich-7940ab142/   
 https://www.linkedin.com/in/rajinder-gupta-11512751/   
+
+## Data Analysis Cafe
+
+Feel free to reach out to us for follow-up questions, and make use our monthly Data Analysis Cafe:  
+![](../docs/DcGC_DataAnalysisCafe_lowres.png){width=35%}
 
 ## Spatial Analysis Flowchart
 
