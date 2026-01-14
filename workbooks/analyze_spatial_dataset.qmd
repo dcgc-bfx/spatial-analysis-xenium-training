@@ -71,6 +71,14 @@ knitr::knit_hooks$set(timeit = local({
 }))
 ```
 
+# Preface
+
+The Xenium platform provides spatially resolved transcriptomics readouts. For each and every transcript, we know the original physical coordinates within the tissue. This means that transcripts can be analyzed in their spatial context, even before defining individual cell boundaries. Such analyses are referred to as **segmentation-free analyses**.
+
+Alternatively, we can delineate cell boundaries with **cell segmentation** methods. Thinking in terms of cells often simplifies data interpretation and allows us to use the extensive toolkit developed for scRNA-seq analysis. However, these scRNA-seq tools do not incorporate spatial information, which limits their ability to fully exploit the richness of Xenium data. Consequently, dedicated methods for spatially resolved transcriptomics are actively being developed.
+
+In this workflow, we work with cell segmentation. The data we read and analyse are classical gene-by-cell count matrices. We begin with standard quality control (QC) and preprocessing steps commonly used in scRNA-seq analysis. This provides an initial understanding of the data before applying spatially aware methods.
+
 # Loading the dataset
 
 ```{r}
@@ -88,14 +96,6 @@ cells_metadata = read.csv("datasets/xenium_mouse_brain/cells.csv.gz")
 sc = AddMetaData(sc, metadata=cells_metadata %>% select(cell_id, nucleus_area, cell_area) %>% column_to_rownames("cell_id"))
 sc$nucleus_area = ifelse(is.na(sc$nucleus_area), 0, sc$nucleus_area) # there is a bug in Seurat ImageFeaturePlot if NA is in the data
 ```
-
-# Preface
-
-The Xenium platform provides spatially-resolved transcriptomics readouts. For each and every transcript, we know the original physical coordinates within the tissue. This means that transcripts can be analyzed in their spatial context, even before defining individual cell boundaries. Such analyses are referred to as **segmentation-free analyses**.
-
-Alternatively, we can delineate cell boundaries with **cell segmentation** methods. Thinking in terms of cells often simplifies data interpretation and allows us to use the extensive toolkit developed for scRNA-seq analysis. However, these scRNA-seq tools do not incorporate spatial information, which limits their ability to fully exploit the richness of Xenium data. Consequently, dedicated methods for spatially-resolved transcriptomics are actively being developed.
-
-In this workflow, we work with cell segmentation. The data we read and analyse are classical gene-by-cell count matrices. We begin with standard quality control (QC) and preprocessing steps commonly used in scRNA-seq analysis. This provides an initial understanding of the data before applying spatially-aware methods.
 
 # Quality control
 
@@ -160,9 +160,15 @@ ImageDimPlot(sc, group.by="filtered_nCount", cols=c(filtered="#FFFF00", kept="gr
 ```
 
 ::: {.callout-note}
-### Find your optimal threshold
+### Assignment
 Play around with the thresholds in R. Which threshold would you find best?
 :::
+
+```{r}
+#| label: assignment_1
+#| eval: false
+
+```
 
 ## Number of genes per cell
 
@@ -458,10 +464,15 @@ DimPlot(sc, reduction="pca", dims=c(1, 2))
 ```
 
 ::: {.callout-note}
-## Assignment
-
+### Assignment
 Visualize the PCA for PC2 and PC3. 
 :::
+
+```{r}
+#| label: assignment_2
+#| eval: false
+
+```
 
 ::: {.callout-note}
 ### Question
@@ -556,9 +567,15 @@ table(sc$seurat_clusters)
 Note that we can provide multiple resolution values to test different clustering resolutions.
 
 ::: {.callout-note}
-## Assignment
+### Assignment
 Test different cluster resolutions and observe the number of clusters you receive. 
 :::
+
+```{r}
+#| label: assignment_3
+#| eval: false
+
+```
 
 ```{r}
 #| label: clustering_colors
@@ -589,7 +606,7 @@ p1 | p2
 ```
 
 ::: {.callout-note}
-## Assignment
+### Assignment
 
 The parameter `dims` specifies how many PCs (and hence information) we use as input for UMAP. Similarly, the parameter `n.neighbors` controls how UMAP balances local (few neighbors) versus global structure (many neighbors) in the data.
 
@@ -813,8 +830,7 @@ DotPlot(sc, features=markers_top$gene %>% unique()) +
 ```
 
 ::: {.callout-note}
-## Assignment
-
+### Question
 Take a good look at the dot plot. Which clusters do / do not have good marker genes? 
 :::
 
@@ -823,8 +839,7 @@ Take a good look at the dot plot. Which clusters do / do not have good marker ge
 We can use the identified cluster marker genes to perform functional enrichment analysis. This helps us infer the potential biological identity or function of each cluster. For simplicity, we will use the online tool [Enrichr](https://maayanlab.cloud/Enrichr/) to perform this analysis. 
 
 ::: {.callout-note}
-## Assignment
-
+### Assignment
 Try to find the identity of one cluster! 
 :::
 
@@ -900,11 +915,6 @@ rm(counts, data, scale_data, umap)
 # But in our experience it is sometimes better to explicitly tell R to do this - especially when working with big objects.
 gc()
 ```
-
-::: {.callout-note}
-## Assignment
-Visualize cluster marker genes and known marker genes on the UMAP and in spatial context, and identify at least one cell type from it. 
-:::
 
 # Cell type annotation by reference mapping
 

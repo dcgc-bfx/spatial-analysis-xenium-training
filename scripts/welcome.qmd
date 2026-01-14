@@ -1,0 +1,80 @@
+---
+title: "Welcome to the DcGC Training on Xenium Data Analysis!"
+author: "Bioinformatics Team, DRESDEN-concept Genome Center"
+format: 
+  revealjs:
+    theme: "white"
+    embed-resources: true
+    slide-number: true
+    smaller: true
+    code-line-numbers: true
+editor: "visual"
+include-in-header:
+  text: |
+    <style type="text/css">
+      li {
+        font-size: 0.9em;
+      }
+    </style>
+execute: 
+  eval: false
+---
+
+## DcGC Bioinformatics Team 
+
+![](../docs/DcGC_Bfx_Team.png)
+
+## Schedule Overview
+
+Today, 20.01.2026  
+11:00 - 12:00 - Set up your computers  
+12:00 - 13:00 - Lunch Break  
+13:00 - 14:30 - Loading Xenium data into `R` and `Seurat`  
+14:30 - 14:50 - Coffee Break  
+14:50 - 15:00 - Group Photo  
+15:00 - 17:00 - Spatial Transcriptomics Data Analysis  
+
+&nbsp;
+
+Tomorrow, 21.01.2026  
+09:00 - 10:20 - Continuation Data Analysis  
+10:20 - 10:40 - Coffee Break  
+10:40 - 12:00 - Continuation Data Analysis  
+
+## Code Availability
+
+After the training, you will be able to access all materials via our GitHub repository: 
+https://github.com/dcgc-bfx/spatial-analysis-xenium-training
+
+:::: {.columns}
+
+::: {.column width="45%"}
+![](../docs/DcGC_Bfx_GitHub.png)
+:::
+
+::: {.column width="45%"}
+&nbsp;
+
+You are welcome to contribute and develop the code further! 
+:::
+
+::::
+
+## LinkedIn
+
+Follow us on LinkedIn for updates on future trainings and events!   
+https://www.linkedin.com/company/dresden-concept-genome-center/   
+![](../docs/DcGC_LinkedIn.png){width=80%}
+
+&nbsp;
+
+https://www.linkedin.com/in/katrinsameith/   
+https://www.linkedin.com/in/ulrike-anne-friedrich-7940ab142/   
+https://www.linkedin.com/in/rajinder-gupta-11512751/   
+
+## Spatial Analysis Flowchart
+
+![](../docs/SpatialAnalysisFlowchart.png) 
+
+
+

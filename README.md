@@ -39,13 +39,5 @@ We welcome contributions! To contribute:
 
 If you used our workbooks to analyze your data, please cite it by mentioning the DRESDEN-concept Genome Center URL "https://genomecenter.tu-dresden.de". 
 
-## Quick Start
-
-### Linux
-You can get started using our containerized environment, see [here](scripts/start_rstudio.qmd).
-
-### Windows / macOS
-Install the required software locally (R, RStudio, and required R packages). After installation, you can run all workbooks without the container.
-
 **Happy coding & exploring spatial data!**
 
