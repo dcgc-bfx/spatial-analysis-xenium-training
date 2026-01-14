@@ -1225,9 +1225,6 @@ In the following example, we set `lambda=0.8` and `k_geom=50` to include more ne
 ```{r}
 #| label: banksy_1
 
-# Backup original clusters; 'seurat_clusters' will be over-written
-sc$clusters = sc$seurat_clusters
-
 # Run BANKSY on the highly-variable genes
 DefaultAssay(sc) = "Xenium"
 sc = RunBanksy(sc,
@@ -1256,8 +1253,9 @@ sc$banksy_domains_clusters = sc$seurat_clusters
 cols_banksy_domains_clusters = rev(cal_pal50)[1:length(levels(sc$banksy_domains_clusters))]
 names(cols_banksy_domains_clusters) = levels(sc$banksy_domains_clusters)
 
-# Reset
+# Restore
 DefaultAssay(sc) = "Xenium"
+sc$seurat_clusters = sc$seurat_clusters_backup
 Idents(sc) = "spatialleiden"
 ```
 
@@ -1287,7 +1285,7 @@ Let us compare the results of default **original clustering, spatially-aware clu
 ```{r}
 #| label: banksy_4
 
-p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+p1 = DimPlot(sc, reduction="umap", label=TRUE, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
 p2 = DimPlot(sc, reduction="umap", label=TRUE, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
 p3 = DimPlot(sc, reduction="banksy_domains_umap", label=TRUE, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
 p1
@@ -1301,7 +1299,7 @@ And as spatial plots:
 #| label: banksy_5
 
 plist = list()
-plist[[1]] = ImageDimPlot(sc, group.by="clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
+plist[[1]] = ImageDimPlot(sc, group.by="seurat_clusters", cols=cols_clusters) + NoLegend() + ggtitle("Original clustering")
 plist[[2]] = ImageDimPlot(sc, group.by="spatialleiden", cols=cols_spatialleiden) + NoLegend() + ggtitle("Spatially-aware clustering")
 plist[[3]] = ImageDimPlot(sc, group.by="banksy_domains_clusters", cols=cols_banksy_domains_clusters) + NoLegend() + ggtitle("BANKSY domains")
 patchwork::wrap_plots(plist, ncol=3)
