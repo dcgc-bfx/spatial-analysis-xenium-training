@@ -357,7 +357,7 @@ sc
 :::
 
 ```{r}
-#|label: rm_1
+#| label: rm_1
 
 # Clean up 
 rm(counts)
