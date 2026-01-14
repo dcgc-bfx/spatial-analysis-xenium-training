@@ -91,9 +91,9 @@ sc$nucleus_area = ifelse(is.na(sc$nucleus_area), 0, sc$nucleus_area) # there is 
 
 # Preface
 
-The Xenium platform provides spatially resolved transcriptomics readouts. For each and every transcript, we know the original physical coordinates within the tissue. This means that transcripts can be analyzed in their spatial context, even before defining individual cell boundaries. Such analyses are referred to as **segmentation-free analyses**.
+The Xenium platform provides spatially-resolved transcriptomics readouts. For each and every transcript, we know the original physical coordinates within the tissue. This means that transcripts can be analyzed in their spatial context, even before defining individual cell boundaries. Such analyses are referred to as **segmentation-free analyses**.
 
-Alternatively, we can delineate cell boundaries with **cell segmentation** methods. Thinking in terms of cells often simplifies data interpretation and allows us to use the extensive toolkit developed for scRNA-seq analysis. However, these scRNA-seq tools do not incorporate spatial information, which limits their ability to fully exploit the richness of Xenium data. Consequently, dedicated methods for spatially resolved transcriptomics are actively being developed.
+Alternatively, we can delineate cell boundaries with **cell segmentation** methods. Thinking in terms of cells often simplifies data interpretation and allows us to use the extensive toolkit developed for scRNA-seq analysis. However, these scRNA-seq tools do not incorporate spatial information, which limits their ability to fully exploit the richness of Xenium data. Consequently, dedicated methods for spatially-resolved transcriptomics are actively being developed.
 
 In this workflow, we work with cell segmentation. The data we read and analyse are classical gene-by-cell count matrices. We begin with standard quality control (QC) and preprocessing steps commonly used in scRNA-seq analysis. This provides an initial understanding of the data before applying spatially-aware methods.
 
@@ -721,7 +721,7 @@ sc = AddMetaData(sc, metadata=cluster_results)
 Idents(sc) = "spatialleiden"
 ```
 
-Bring the cluster labels back into Seurat metadata and compare UMAPs and tissue plots of expression-only vs spatially informed clusters.
+Bring the cluster labels back into Seurat metadata and compare UMAPs and tissue plots of expression-only vs spatially-informed clusters.
 
 ```{r}
 #| label: spatial_clustering_4
@@ -781,7 +781,7 @@ Let us now extract and visualize the top 3 marker genes for each cluster based o
 
 ```{r}
 #| label: clusterannot_2
-#| 
+
 # Solution
 markers_top = markers %>% 
   dplyr::group_by(cluster) %>% 
@@ -919,12 +919,12 @@ ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
 
-Next, we inspect the cell metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer.
+Next, we inspect the cell metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer. Here are the diffeent cell metadata columns:
 
 ```{r}
 #| label: ref_annot_2
 
-head(ref[[]], 10)
+colnames(ref[[]])
 ```
 
 From the cell metadata, we use the columns `class_label`and `subclass_label` for our cell type annotations. Before proceeding, we examine the available labels to understand the diversity and distribution of cell types present in the reference.
@@ -990,6 +990,8 @@ With both datasets processed, we now identify anchors between the reference and 
 ```{r}
 #| label: ref_annot_6
 
+# This chunk will take roughly 8 minutes to run.
+
 # Find anchors between reference and query
 anchors = FindTransferAnchors(
   reference=ref,
@@ -1034,30 +1036,24 @@ First, we visualize the three general categories of cell types in UMAP and spati
 
 ```{r}
 #| label: ref_annot_8
+#| fig-height: 7
 
-barcode_metadata = sc[[]]
+p1 = DimPlot(sc, group.by="predicted.cellcategory") + labs(title="Predicted cell categories") + theme(legend.position="bottom")
 
-p1 = DimPlot(sc, group.by="predicted.cellcategory")
-p1$data$seurat_clusters = barcode_metadata[rownames(p1$data), "seurat_clusters"]
-p1 = LabelClusters(p1, "seurat_clusters", box=TRUE)
-
-p2 = ImageDimPlot(sc, group.by="predicted.cellcategory") + theme(legend.position="none")
-p1 | p2
+p2 = ImageDimPlot(sc, group.by="predicted.cellcategory") + guides(fill="none", alpha="none")
+(p1 | p2) + plot_layout(guides="collect") & theme(legend.position = "bottom")
 ```
 
 Then, we visualize the more specific predicted cell types per category in UMAP and spatial context:
 
 ```{r}
 #| label: ref_annot_9
+#| fig-height: 7
 
-barcode_metadata = sc[[]]
+p1 = DimPlot(sc, group.by="predicted.celltype") + labs(title="Predicted cell types") + theme(legend.position="bottom")
 
-p1 = DimPlot(sc, group.by="predicted.celltype")  + labs(title="Predicted cell types")
-p1$data$seurat_clusters = barcode_metadata[rownames(p1$data), "seurat_clusters"]
-p1 = LabelClusters(p1, "seurat_clusters", box=TRUE)
-
-p2 = ImageDimPlot(sc, group.by="predicted.celltype") + theme(legend.position="none")
-p1 | p2
+p2 = ImageDimPlot(sc, group.by="predicted.celltype") + guides(fill="none", alpha="none")
+(p1 | p2) + plot_layout(guides="collect") & theme(legend.position = "bottom")
 ```
 
 Finally, we compare the predicted cell types with our spatial clusters to evaluate how well the clustering corresponds to known biological identities. We create bar plots to visualize the distribution of predicted cell types within each spatial cluster, both in terms of absolute counts and proportions.
@@ -1066,14 +1062,14 @@ Finally, we compare the predicted cell types with our spatial clusters to evalua
 #| label:  ref_annot_10
 #| 
 p1 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
+  geom_bar(position = "stack") +
   scale_fill_discrete(na.value="grey80") +
   labs(
     x="Spatial Leiden cluster",
-    y="Number of cells",
-    fill="Predicted cell type"
+    y="Number of cells"
   ) +
   theme_classic() +
-  theme(axis.text.x=element_text(angle=45, hjust=1))
+  theme(axis.text.x=element_text(angle=45, hjust=1), legend.title=element_blank())
 
 p2 = ggplot(sc[[]], aes(x=seurat_clusters, fill=predicted.celltype)) +
   geom_bar(position = "fill") +
@@ -1081,16 +1077,12 @@ p2 = ggplot(sc[[]], aes(x=seurat_clusters, fill=predicted.celltype)) +
   scale_fill_discrete(na.value="grey80") +
   labs(
     x = "Spatial Leiden cluster",
-    y = "Cell-type proportion",
-    fill = "Predicted cell type"
+    y = "Cell-type proportion"
   ) +
   theme_classic() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.title=element_blank())
 (p1 | p2) +
-  plot_layout(guides = "collect") &
-  theme(legend.position = "right")
+  plot_layout(guides = "collect") & theme(legend.position = "bottom")
 ```
 
 # Spatial domains
@@ -1106,7 +1098,7 @@ Next, we show a complementary approach: `BANKSY`. The goal is to highlight a dif
 - the cell’s own expression profile  
 - a summary of the local neighborhood expression ("a local average")
 
-BANKSY runs on the highly-variable genes. By embedding cells using both components, BANKSY captures cell identity plus microenvironment, which can improve robustness and make larger-scale tissue structure easier to detect.
+ By embedding cells using both components, BANKSY captures cell identity plus microenvironment, which can improve robustness and make larger-scale tissue structure easier to detect.
 
 A single parameter, lambda (λ), controls how much neighborhood information is mixed in:
 
@@ -1208,7 +1200,7 @@ We encourage you to systematically explore different parameter settings for `lam
 We can try to evaluate the different approaches by visualizing known marker genes. Which of the produced results best reflects the different cell types we know? 
 
 ```{r}
-#| label: spatial_8
+#| label: banksy_6
 #| fig-width: 10
 
 # Which of the three clusterings best reflects our known biology?
@@ -1227,7 +1219,7 @@ for (i in seq(plist)) {
 ```
 
 ```{r}
-#| label: spatial_9
+#| label: banksy_7
 
 # Which of the two UMAPs visualizes features_to_plot best?
 message("Original UMAP")
@@ -1281,7 +1273,7 @@ group_data$color = cols_banksy_domains_clusters[as.character(group_data$group)]
 write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.names=FALSE, quote=FALSE)
 ```
 
-We created three different CSV files that can be imported as "Groups" in the "Cells" pane of the Xenium Explorer.
+We created three different CSV files that can be imported as "Groups" in the "Cells" pane of the Xenium Explorer. Feel free to give it a try.
 
 # Session info
 
