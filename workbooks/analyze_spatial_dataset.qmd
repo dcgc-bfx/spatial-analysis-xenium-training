@@ -919,7 +919,7 @@ ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
 
-Next, we inspect the cell metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer. Here are the diffeent cell metadata columns:
+Next, we inspect the cell metadata associated with the reference object. Metadata typically contains annotations such as experimental conditions, sample identifiers, and—most importantly for our purposes—cell type labels. Identifying the column that encodes cell identity is essential for downstream label transfer. Here are the different cell metadata columns:
 
 ```{r}
 #| label: ref_annot_2
