@@ -7,3 +7,5 @@
 **/*.quarto_ipynb
 datasets/
 .Rproj.user
+workbooks/*.html
+workbooks/*_files

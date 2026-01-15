@@ -791,6 +791,7 @@ Bring the cluster labels back into Seurat metadata and compare UMAPs and tissue 
 #| label: spatial_clustering_4
 
 # Cluster colors
+set.seed(1)
 cols_spatialleiden = sample(cal_pal50[1:length(levels(sc$spatialleiden))])
 names(cols_spatialleiden) = levels(sc$spatialleiden)
 ```
@@ -1096,7 +1097,7 @@ Once the anchors have been identified, we use them to transfer cell type annotat
 predictions = TransferData(
   anchorset=anchors,
   refdata=ref$class_label,
-  dims=1:20
+  dims=1:30
 )
 
 # Filter low-confidence predictions (<0.6 but may vary across datasets)
@@ -1110,7 +1111,7 @@ sc = AddMetaData(sc, metadata=predictions)
 predictions = TransferData(
   anchorset=anchors,
   refdata=ref$subclass_label,
-  dims=1:20
+  dims=1:30
 )
 
 # Filter low-confidence predictions (<0.6 but may vary across datasets)
@@ -1153,7 +1154,8 @@ Finally, we compare the predicted cell types with our spatial clusters to evalua
 
 ```{r}
 #| label:  reference_mapping_10
-#| 
+#| fig-height: 6
+
 p1 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
   geom_bar(position = "stack") +
   scale_fill_discrete(na.value="grey80") +
@@ -1347,7 +1349,7 @@ Here we export the results of default **original clustering, spatially-aware clu
 #| label: export_results
 
 # Original clusters
-group_name = "clusters"
+group_name = "seurat_clusters"
 group_data = sc[[group_name]] %>% tibble::rownames_to_column()
 colnames(group_data) = c("cell_id", "group")
 group_data$color = cols_clusters[as.character(group_data$group)]
@@ -1371,6 +1373,8 @@ write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.n
 ::: {.callout-note}
 ### Assignment 10
 If time permits, open Xenium Explorer and import the generated CSV files to visualize and explore the different clustering results within the spatial context of the tissue.
+
+You will need to download the files that are required for the Xenium Explorer to your local laptop. Please go  [here](https://www.10xgenomics.com/datasets/xenium-prime-fresh-frozen-mouse-brain) and click on "Explore data" for download. Unzip the archive and open the "experiment.xenium" file in the Xenium Explorer.
 :::
 
 # Session info
