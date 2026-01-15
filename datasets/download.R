@@ -31,3 +31,12 @@ curl::handle_setheaders(h, "X-Requested-With"="XMLHttpRequest")
 curl::curl_download(url="https://datashare.tu-dresden.de/public.php/webdav/",
                     destfile="datasets/spanorm.rds",
                     handle=h)
+
+# Free-hand selection coordinates
+dir.create("datasets/xenium_mouse_brain/selections")
+h = curl::new_handle()
+curl::handle_setopt(handle=h, userpwd="Ccp4crDZHBE8bZm:1234")
+curl::handle_setheaders(h, "X-Requested-With"="XMLHttpRequest")
+curl::curl_download(url="https://datashare.tu-dresden.de/public.php/webdav/",
+                    destfile="datasets/xenium_mouse_brain/selections/freehand-selection_cellids.csv",
+                    handle=h)
