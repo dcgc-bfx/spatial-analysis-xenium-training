@@ -41,7 +41,12 @@ If you used our workbooks to analyze your data, please cite it by mentioning the
 
 ## Singularity container
 
-We are happy to share our [Singularity container](oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:v1.6.6). It contains all software reqiured to run our code. 
+We are happy to share our Singularity container. It contains all software required to run our code. 
+
+```
+# Command to download the singularity container
+singularity pull oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:v1.6.6
+```
 
 **Happy coding & exploring spatial data!**
 
