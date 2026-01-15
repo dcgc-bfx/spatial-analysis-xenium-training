@@ -32,7 +32,7 @@ library(tidyverse)        # Essential collection of R packages, including ggplot
 library(grid)             # For other plots
 library(viridis)          # Our continuous colour palette
 
-# Colours
+# Colors
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
               "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
               "#761445", "#d65b5a", "#94043a", "#e7a6cd", "#204519", "#87afd1", 
@@ -118,8 +118,8 @@ This dataset contains:
 
 Let us take a closer look at the `cell_feature_matrix/` directory, which includes three important files:
 - `barcodes.tsv.gz`: contains the names (or identifiers) for each of the cell in the dataset 
-- `features.tsv.gz` contains essential information about the genes, including their Ensembl IDs, symbols and gene types 
-- `matrix.mtx.gz` contains the actual counts data 
+- `features.tsv.gz`: contains essential information about the genes, including their Ensembl IDs, symbols and gene types 
+- `matrix.mtx.gz`: contains the actual counts data 
   - The first three rows are headers. The third row (=our first row) contains the total number of genes, cells and count entries (not the same as total number of counts!). 
   - All other rows contain the gene index (row in `features.tsv.gz`), cell index (row in `barcodes.tsv.gz`) and the count value. 
   - Only non-zero counts are stored.
@@ -261,8 +261,8 @@ Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
 ::: callout-tip
 ### Nomenclature
 
-Note that sometimes the term **cells** is also referred to as barcodes, bins, nuclei.\
-The term **gene** is also referred to as feature, protein, peak, depending on the dataset.\
+Note that sometimes the term **cells** is also referred to as barcodes, bins, nucleus.\
+The term **gene** is also referred to as feature, protein, or peak, depending on the dataset.\
 We will stick to cells and genes for this workshop.
 :::
 
@@ -516,7 +516,7 @@ ImageFeaturePlot(xenium.obj, features = c("Aatf", "Abcb1a", "Acox1"), max.cutoff
 ::: callout-tip
 ### Plot size and resolution matter
 
-You may observe visual artefacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g., 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
+You may observe visual artifacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g. 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
 :::
 
 ::: callout-note
