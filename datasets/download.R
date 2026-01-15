@@ -10,7 +10,7 @@ curl::curl_download(url="https://cf.10xgenomics.com/samples/xenium/3.0.0/Xenium_
                     destfile="datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip")
 unzip(zipfile="datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip", exdir="datasets/xenium_mouse_brain")
 unlink("datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip")
-untar("datasets/xenium_mouse_brain/cell_feature_matrix.tar.gz", exdir="output_dir")
+untar("datasets/xenium_mouse_brain/cell_feature_matrix.tar.gz", exdir="datasets/xenium_mouse_brain/")
 
 
 # Download H&E images

@@ -1,9 +1,11 @@
 ---
-title: "🧬 Spatial Transcriptomics Analysis (part 1)"
+title: "🧬 Spatial Transcriptomics Data Analysis"
 format: html
 ---
 
-# Welcome to the NGS-CN Summer School on Spatial Transcriptomics Analysis!
+# Welcome 
+
+Welcome to our training on spatial transcriptomics data analysis!  
 
 Spatial transcriptomics allows us to measure gene expression across tissue sections while preserving spatial information, helping us understand not just **what** genes are active, but **where** they are active.
 
@@ -13,7 +15,7 @@ Feel free to use your personal workbook to make notes, track your progress, and 
 
 ------------------------------------------------------------------------
 
-In this **first part**, we will explore the dataset, learn how to load it into R, and examine how the data is structured within a Seurat object. We will also perform some initial visualisations to familiarise ourselves with the dataset and its spatial features.
+In this **first part**, we will explore the dataset, learn how to load it into R, and examine how the data is structured within a Seurat object. We will also perform some initial visualizations to familiarize ourselves with the dataset and its spatial features.
 
 ## Setting up your R environment
 
