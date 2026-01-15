@@ -2,7 +2,6 @@ project:
   type: "default"
   execute-dir: "project"
   render:
-    - "workbooks/our_first_workbook.qmd"
     - "workbooks/read_dataset_to_seurat.qmd"
     - "workbooks/analyze_spatial_dataset.qmd"
 
@@ -12,13 +11,15 @@ project:
 execute: 
   echo: true
   warning: false
+  message: false
   
 #################
 # Knitr options #
 #################
 knitr:
   opts_chunk:
-    dpi: 400
+    timeit: true
+    dpi: 200
     fig-width: 8
     fig-height: 5
     dev:
@@ -26,12 +27,14 @@ knitr:
     dev.args:
       png:
         type: "cairo"
-    
+
 ##################
 # Format options #
 ##################
 format:
   html:
+    toc: true
+    toc-location: left
     theme:
     - "serif"
     - "css/html.scss"
