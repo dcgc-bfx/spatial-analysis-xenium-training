@@ -39,5 +39,9 @@ We welcome contributions! To contribute:
 
 If you used our workbooks to analyze your data, please cite it by mentioning the DRESDEN-concept Genome Center URL "https://genomecenter.tu-dresden.de". 
 
+## Singularity container
+
+We are happy to share our [Singularity container](oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:v1.6.6). It contains all software reqiured to run our code. 
+
 **Happy coding & exploring spatial data!**
 
