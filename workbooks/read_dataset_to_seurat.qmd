@@ -103,13 +103,13 @@ The key files for our analysis are located in `filtered_feature_bc_matrix`.
 Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which includes three important files:
 
 * `barcodes.tsv.gz`: Contains the names (or identifiers) for each of the bins in the dataset
-* `features.tsv.gz` Contains essential information about the genes, including their Ensembl IDs, symbols and gene types
+* `features.tsv.gz`: Contains essential information about the genes, including their Ensembl IDs, symbols and gene types
 * `matrix.mtx.gz` Contains the actual counts data
    * The first row contains the total number of genes, bins and counts.
    * All other rows contain the gene index (row in `features.tsv.gz`), bin index (row in `barcodes.tsv.gz`) and the count value.
    * Only non-zero counts are stored.
 
-Here are the first few lines of each file for the 016 µm dataset:
+Here are the first few lines of each file for the 16 µm dataset:
 
 ```{r}
 #| label: dataset_1
@@ -204,8 +204,8 @@ Features(sc) %>% head(5)
 
 ::: {.callout-tip}
 ### Nomenclature
-Note that sometimes the term **bin** is also referred to as barcode, cell, nuclei.   
-The term **gene** is also referred to as feature, protein, peak.   
+Note that sometimes the term **bin** is also referred to as barcode, cell, or nucleus.   
+The term **gene** is also referred to as feature, protein, or peak.   
 We will stick to bins and genes for this workshop. 
 :::
 
