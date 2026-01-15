@@ -25,7 +25,7 @@ Our workbooks cover:
 
 ## Credits
 
-The workbooks are being written by [Katrin Sameith](https://github.com/ktrns), [Andreas Petzold](https://github.com/andpet0101), [Ulrike Friedrich](https://github/ulrikefriedrich), and [Rajinder Gupta](https://github.com/rajinder4489) at the [DRESDEN-concept Genome Center](https://genomecenter.tu-dresden.de/about-us). 
+The workbooks are being written by [Katrin Sameith](https://github.com/ktrns), [Andreas Petzold](https://github.com/andpet0101), [Ulrike Friedrich](https://github.com/ulrikefriedrich), and [Rajinder Gupta](https://github.com/rajinder4489) at the [DRESDEN-concept Genome Center](https://genomecenter.tu-dresden.de/about-us). 
 
 ## Contributions
 
