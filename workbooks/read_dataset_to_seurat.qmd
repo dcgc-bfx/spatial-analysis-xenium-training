@@ -13,7 +13,7 @@ Feel free to use your personal workbook to make notes, track your progress, and 
 
 ---
 
-In this **first part**, we will explore the dataset, learn how to load it into R, and examine how the data is structured within a Seurat object. We will also perform some initial visualisations to familiarise ourselves with the dataset and its spatial features.
+In this **first part**, we will explore the dataset, learn how to load it into R, and examine how the data is structured within a Seurat object. We will also perform some initial visualizations to familiarize ourselves with the dataset and its spatial features.
 
 ## Setting up your R environment 
 
@@ -30,7 +30,7 @@ library(tidyverse)  # Essential collection of R packages, including ggplot2, dpl
 library(grid)       # For other plots
 library(viridis)    # Our continuous colour palette
 
-# Colours
+# Colors
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
               "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
               "#761445", "#d65b5a", "#94043a", "#e7a6cd", "#204519", "#87afd1", 
@@ -426,7 +426,7 @@ SpatialFeaturePlot(sc, features=c("Nrgn", "Igf2", "Hap1"), slot="counts")
 
 ::: {.callout-tip}
 ### Plot size and resolution matter
-You may observe visual artefacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g., 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
+You may observe visual artifacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g., 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
 :::
 
 ### Comparison Between 8µm and 16µm Bins
