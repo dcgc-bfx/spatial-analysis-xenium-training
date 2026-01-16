@@ -93,9 +93,8 @@ Metadata:
 - `gene_panel.json`: list of used panel probes and corresponding genes
 
 Transcript data: 
-
-- `transcript.zarr.gz`: raw transcript data with x, y, z coordinates for each transcript (in compressed zarr format)
-- `transcripts.parquet`: same content as above but in specific format for faster input/output
+- `transcript.zarr.gz`: raw transcript data with x, y, z coordinates for each transcript in compressed zarr format (efficient storage)
+- `transcripts.parquet`: same content as above but in parquet format (faster input/output)
 
 Images: 
 
@@ -122,7 +121,7 @@ This dataset contains:
 ## Counts data
 
 Let us take a closer look at the `cell_feature_matrix/` directory, which includes three important files:
-- `barcodes.tsv.gz`: contains the names (or identifiers) for each of the cell in the dataset 
+- `barcodes.tsv.gz`: contains the names (or identifiers) for each cell in the dataset 
 - `features.tsv.gz`: contains essential information about the genes, including their Ensembl IDs, symbols and gene types 
 - `matrix.mtx.gz`: contains the actual counts data 
   - The first three rows are headers. The third row (=our first row) contains the total number of genes, cells and count entries (not the same as total number of counts!). 
@@ -164,7 +163,7 @@ sum(read.delim("datasets/xenium_mouse_brain/cell_feature_matrix/matrix.mtx.gz",
 ### Example
 
 This dataset has 13,780 genes, 63,173 cells and 86,638,709 counts.\
-Row3: Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
+Row 3: Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
 :::
 
 ::: callout-note
@@ -189,7 +188,7 @@ The first step in analyzing your data is to import it into Seurat and transform 
 xenium.obj = Seurat::LoadXenium("datasets/xenium_mouse_brain",
                                 fov="fov",
                                 segmentations="cell", # can be "cell", "nucleus" or NONE
-                                flip.xy=TRUE) # swith x & y to mirror the Xenium Explorer view
+                                flip.xy=TRUE) # switch x & y to mirror the Xenium Explorer view
 
 # rename the data
 xenium.obj$orig.ident = "brain"
@@ -475,7 +474,11 @@ xenium.obj[["fov"]]
 
 When we refer to the default image in spatial transcriptomics, we usually mean the spatial coordinates associated with each cell. These coordinates tell us where each cell is located within the tissue section but not what the tissue looks like visually. The DAPI image itself it not automatically loaded into the Seurat object.
 
-The image slot typically contains the following information: - cell localization (called `centroids`) - cell segmentation (called `segmentation`) - molecule coordinates - image metadata
+The image slot typically contains the following information: 
+- cell localization (called `centroids`) 
+- cell segmentation (called `segmentation`) 
+- molecule coordinates 
+- image metadata
 
 Normally, Seurat also allows us to load and view the underlying histological images such as H&E images that were taken for the Xenium sample. It is very helpful to plot those morphology images along with gene expression patterns. The current Seurat version however does not support this functionality for Xenium data. You can view the combination of gene expression data and histological images in the Xenium Explorer.
 
@@ -683,4 +686,4 @@ sessioninfo::session_info()
 
 **Now that we have successfully loaded the data into Seurat and explored the structure of the Seurat object, it's time to move on to the next step: data analysis.**
 
-**To free the occupied memory, please restart the R session in RStudio via Session-\>Restart R.**
+**To free the occupied memory, please restart the R session in RStudio via Session → Restart R.**
