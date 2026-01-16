@@ -63,6 +63,7 @@ In this section, we will introduce the dataset we are using for this training se
 ## Dataset overview
 
 We use a **mouse brain dataset** from [10x Genomics](https://www.10xgenomics.com/):
+
 -   Source: Downloaded from [here](https://www.10xgenomics.com/datasets/xenium-prime-fresh-frozen-mouse-brain)
 -   Sample: Male C57BL/6 mouse, 9 weeks old, non-diseased
 -   Tissue: Fresh-frozen brain tissue & embedding in OCT
@@ -76,6 +77,7 @@ The dataset is located in the `datasets/xenium_mouse_brain` directory within you
 ## Dataset files
 
 In the folder `datasets/xenium_mouse_brain` you find data of the following categories: 
+
 - raw data 
 - processed data 
 - additional (Xenium independent) data
@@ -85,15 +87,18 @@ In the folder `datasets/xenium_mouse_brain` you find data of the following categ
 These data come directly from the Xenium Analyzer and comprise metadata about the run, raw transcript data and images.
 
 Metadata:
+
 - `metrics_summary.csv`: QC report in CSV format
 - `experiment.xenium`: experiment and run metadata (required for Xenium Analyzer)
 - `gene_panel.json`: list of used panel probes and corresponding genes
 
 Transcript data: 
+
 - `transcript.zarr.gz`: raw transcript data with x, y, z coordinates for each transcript (in compressed zarr format)
 - `transcripts.parquet`: same content as above but in specific format for faster input/output
 
 Images: 
+
 - `morphology.ome.tif`: 3D image
 - folder `morphology_focus/`: contains 2D autofocus images
 
