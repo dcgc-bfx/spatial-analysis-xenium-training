@@ -225,7 +225,7 @@ We can retrieve the total number of genes, cells and counts stored in the Seurat
 #| label: data_load_3
 
 # inspect genes
-Features(xenium.obj) %>% head(5)
+Seurat::Features(xenium.obj) %>% head(5)
 
 # get number of genes
 n_genes = nrow(xenium.obj)
@@ -271,7 +271,7 @@ Furthermore, cells have a default identity which is used for plotting. It can be
 ```{r}
 #| label: data_load_4
 
-Idents(xenium.obj) %>% head(5)
+Seurat::Idents(xenium.obj) %>% head(5)
 ```
 
 ## Assays
@@ -281,7 +281,7 @@ Assays store the actual data, for example gene expression counts. We can list th
 ```{r}
 #| label: data_assay_1
 
-Assays(xenium.obj)
+Seurat::Assays(xenium.obj)
 ```
 
 To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
@@ -289,7 +289,7 @@ To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
 ```{r}
 #| label: data_assay_2
 
-GetAssay(xenium.obj, assay="BlankCodeword")
+Seurat::GetAssay(xenium.obj, assay="BlankCodeword")
 xenium.obj[["BlankCodeword"]]
 ```
 
@@ -298,7 +298,7 @@ As before, we can also check the number of genes and cells in a specific assay l
 ```{r}
 #| label: data_assay_3
 
-assay = GetAssay(xenium.obj, assay="BlankCodeword")
+assay = Seurat::GetAssay(xenium.obj, assay="BlankCodeword")
 dim(assay)
 ```
 
@@ -307,7 +307,7 @@ The Seurat object has a default/active assay that is used for most functions. To
 ```{r}
 #| label: data_assay_4
 
-DefaultAssay(xenium.obj)
+Seurat::DefaultAssay(xenium.obj)
 ```
 
 To change the active assay to another one, for example `"ControlCodeword"`, use:
@@ -315,8 +315,8 @@ To change the active assay to another one, for example `"ControlCodeword"`, use:
 ```{r}
 #| label: data_assay_5
 
-DefaultAssay(xenium.obj) = "ControlCodeword"
-DefaultAssay(xenium.obj)
+Seurat::DefaultAssay(xenium.obj) = "ControlCodeword"
+Seurat::DefaultAssay(xenium.obj)
 ```
 
 For this workshop, we will focus on the assay `"Xenium"` for our analysis, because this assay contains the gene expression data:
@@ -324,8 +324,8 @@ For this workshop, we will focus on the assay `"Xenium"` for our analysis, becau
 ```{r}
 #| label: data_assay_6
 
-DefaultAssay(xenium.obj) = "Xenium"
-DefaultAssay(xenium.obj)
+Seurat::DefaultAssay(xenium.obj) = "Xenium"
+Seurat::DefaultAssay(xenium.obj)
 ```
 
 ::: callout-tip
@@ -380,7 +380,7 @@ We use the `GetAssayData` function to access the actual data:
 ```{r}
 #| label: data_counts
 
-counts = GetAssayData(xenium.obj, assay="Xenium", layer="counts")
+counts = Seurat::GetAssayData(xenium.obj, assay="Xenium", layer="counts")
 counts[1:10, 1:10]
 ```
 
@@ -419,7 +419,7 @@ Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object
 #| label: data_meta_3
 #| message: true
 
-assay = GetAssay(xenium.obj, assay="Xenium")
+assay = Seurat::GetAssay(xenium.obj, assay="Xenium")
 assay[[]] %>% head(5)
 ```
 
@@ -432,7 +432,7 @@ Dimensionality reductions (e.g., PCA, UMAP, tSNE) are essential for visualizing 
 ```{r}
 #| label: data_reduction
 
-Reductions(xenium.obj)
+Seurat::Reductions(xenium.obj)
 ```
 
 Currently, there are no reductions in the Seurat object. If they were present, you could access them using the `Reductions` function or the `[[]]` syntax.
@@ -444,8 +444,8 @@ To identify how the cells are related (e.g., for clustering), Seurat computes ne
 ```{r}
 #| label: data_neighbors
 
-Neighbors(xenium.obj)
-Graphs(xenium.obj)
+Seurat::Neighbors(xenium.obj)
+Seurat::Graphs(xenium.obj)
 ```
 
 Currently, there are no computed neighbors or graphs. If available, you could access them with the `GetNeighbors` / `GetGraph` functions or the `[[]]` syntax.
@@ -457,7 +457,7 @@ For spatial data, images are stored in the Seurat object to visualize tissue sec
 ```{r}
 #| label: data_image_1
 
-Images(xenium.obj)
+Seurat::Images(xenium.obj)
 ```
 
 By default, one image `fov` ("field of view") is present for the Xenium dataset. Additional images (such as H&E) can be loaded or defined by the `Crop` function which we will do later on. You can access a specific image using the `[[]]` syntax:
@@ -491,8 +491,8 @@ We can also visualize gene expression in a spatial context using a **spatial fea
 #| label: data_plotting_1
 
 # plot with default or viridis color scale 
-p1 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
-p2 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_fill_viridis_c() + scale_y_reverse() 
+p1 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
+p2 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_fill_viridis_c() + scale_y_reverse() 
 
 p1 | p2 + patchwork::plot_layout(guides = "keep")
 
@@ -502,8 +502,8 @@ p1 | p2 + patchwork::plot_layout(guides = "keep")
 #| label: data_plotting_2
 
 # plot with default settings or in black and white
-p1 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
-p2 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95", cols=c("black","white")) + scale_y_reverse() 
+p1 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
+p2 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95", cols=c("black","white")) + scale_y_reverse() 
 
 p1 | p2 + patchwork::plot_layout(guides = "keep")
 
@@ -513,7 +513,7 @@ p1 | p2 + patchwork::plot_layout(guides = "keep")
 #| label: data_plotting_3
 
 # plot multiple genes at once 
-ImageFeaturePlot(xenium.obj, features = c("Aatf", "Abcb1a", "Acox1"), max.cutoff ="q95", cols=c("black","white"), combine=TRUE) & 
+Seurat::ImageFeaturePlot(xenium.obj, features = c("Aatf", "Abcb1a", "Acox1"), max.cutoff ="q95", cols=c("black","white"), combine=TRUE) & 
   scale_y_reverse()
 
 ```
@@ -538,7 +538,7 @@ We can create a **violin plot** of the same genes to show the spatial-independen
 ```{r}
 #| label: data_plotting_4
 
-VlnPlot(xenium.obj, features=c("Aatf", "Abcb1a", "Acox1"), layer="counts", pt.size=0) + NoLegend()
+Seurat::VlnPlot(xenium.obj, features=c("Aatf", "Abcb1a", "Acox1"), layer="counts", pt.size=0) + Seurat::NoLegend()
 ```
 
 ::: callout-note
@@ -560,8 +560,8 @@ We can also plot the total number of counts (or other general QC stats) for the 
 ```{r}
 #| label: data_plotting_5
 
-p1 = VlnPlot(xenium.obj, features = c("nCount_Xenium"), layer="counts", pt.size = 0)
-p2 = ImageFeaturePlot(xenium.obj, features = c("nCount_Xenium"), max.cutoff ="q99") + scale_fill_viridis_c() + scale_y_reverse() 
+p1 = Seurat::VlnPlot(xenium.obj, features = c("nCount_Xenium"), layer="counts", pt.size = 0)
+p2 = Seurat::ImageFeaturePlot(xenium.obj, features = c("nCount_Xenium"), max.cutoff ="q99") + scale_fill_viridis_c() + scale_y_reverse() 
 
 p1 | p2 + patchwork::plot_layout(guides = "keep")
 
@@ -618,7 +618,7 @@ x_max = 6000
 y_min = 200
 y_max = 3100
 
-crop1 <- Crop(xenium.obj[["fov"]],
+crop1 <- Seurat::Crop(xenium.obj[["fov"]],
              x = c(x_min, x_max),
              y = c(y_min, y_max))
 
@@ -626,7 +626,7 @@ crop1 <- Crop(xenium.obj[["fov"]],
 xenium.obj[["crop1"]] <- crop1
 
 # check new image
-Images(xenium.obj)
+Seurat::Images(xenium.obj)
 
 ```
 
@@ -651,7 +651,7 @@ x_max = 4830
 y_min = 1665
 y_max = 1995
 
-crop2 <- Crop(xenium.obj[["fov"]],
+crop2 <- Seurat::Crop(xenium.obj[["fov"]],
              x = c(x_min, x_max),
              y = c(y_min, y_max))
 
@@ -660,7 +660,7 @@ crop2 <- Crop(xenium.obj[["fov"]],
 xenium.obj[["crop2"]] <- crop2
 
 # switch to cell boundaries (default: "centroids")
-DefaultBoundary(xenium.obj[["crop2"]]) <- "segmentation"
+Seurat::DefaultBoundary(xenium.obj[["crop2"]]) <- "segmentation"
 
 # plot total counts 
 Seurat::ImageFeaturePlot(xenium.obj, fov = "crop2", features = c("nCount_Xenium"), max.cutoff ="q99") + scale_fill_viridis_c() + scale_y_reverse()
