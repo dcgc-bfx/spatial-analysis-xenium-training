@@ -158,8 +158,8 @@ sum(read.delim("datasets/xenium_mouse_brain/cell_feature_matrix/matrix.mtx.gz",
 ::: callout-tip
 ### Example
 
-This dataset has 13,780 genes, 63,173 cells and 86,638,709 counts.\
-Row3: Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
+This dataset has 13,780 genes (including control features), 63,173 cells and 86,638,709 counts.\
+Row 3: Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
 :::
 
 ::: callout-note
@@ -470,7 +470,12 @@ xenium.obj[["fov"]]
 
 When we refer to the default image in spatial transcriptomics, we usually mean the spatial coordinates associated with each cell. These coordinates tell us where each cell is located within the tissue section but not what the tissue looks like visually. The DAPI image itself is not automatically loaded into the Seurat object.
 
-The image slot typically contains the following information: - cell localization (called `centroids`) - cell segmentation (called `segmentation`) - molecule coordinates - image metadata
+The image slot typically contains the following information:
+
+- cell localization (called `centroids`)
+- cell segmentation (called `segmentation`)
+- molecule coordinates
+- image metadata
 
 Normally, Seurat also allows us to load and view the underlying histological images such as H&E images that were taken for the Xenium sample. It is very helpful to plot those morphology images along with gene expression patterns. The current Seurat version however does not support this functionality for Xenium data. You can view the combination of gene expression data and histological images in the Xenium Explorer.
 
@@ -678,4 +683,4 @@ sessioninfo::session_info()
 
 **Now that we have successfully loaded the data into Seurat and explored the structure of the Seurat object, it's time to move on to the next step: data analysis.**
 
-**To free the occupied memory, please restart the R session in RStudio via Session-\>Restart R.**
+**To free the occupied memory, please restart the R session in RStudio via Session > Restart R.**
