@@ -16,7 +16,7 @@ Chunks are the building blocks of a Quarto document. A chunk is a section of cod
 1 + 1
 ```
 
-Run this chunk by clicking on the play symbol (top-right button) of the chunk. The output is shown below and can be anything: text, numbers, plots, ... . You can also run all chunks above this chunk clicking on the button next to the play symbol.
+Run this chunk by clicking on the play symbol (top-right button) of the chunk. The output is shown below and can be anything: text, numbers, plots, etc. You can also run all chunks above this chunk by clicking on the button next to the play symbol.
 
 Chunks can have labels, which are useful for referencing them later. For example, the chunk above has the label `chunk_1`:
 
@@ -48,9 +48,9 @@ Quarto documents are written in Markdown, a lightweight markup language that all
 - we create links using the syntax `[link text](URL)`
 - we use `-` to create a bullet list
 
-A detail documentation of the Markdown syntax can be found in the [quarto documentation](https://quarto.org/docs/guide/).
+A detailed documentation of the Markdown syntax can be found in the [quarto documentation](https://quarto.org/docs/guide/).
 
-## Some comments on the our workbook code
+## Some comments on our workbook code
 
 Best practices for assignment is to use the `<-` operator. However, we use the `=` (widely used in other languages) that works as well. What you use is up to you as long as you stick to it.
 

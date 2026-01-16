@@ -12,7 +12,6 @@ unzip(zipfile="datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip", exdir="da
 unlink("datasets/Xenium_Prime_Mouse_Brain_Coronal_FF_outs.zip")
 untar("datasets/xenium_mouse_brain/cell_feature_matrix.tar.gz", exdir="datasets/xenium_mouse_brain/")
 
-
 # Download H&E images
 curl::curl_download(url="https://cf.10xgenomics.com/samples/xenium/3.0.0/Xenium_Prime_Mouse_Brain_Coronal_FF/Xenium_Prime_Mouse_Brain_Coronal_FF_he_image.ome.tif", 
                     destfile="datasets/xenium_mouse_brain/Xenium_Prime_Mouse_Brain_Coronal_FF_he_image.ome.tif")
@@ -31,3 +30,14 @@ curl::handle_setheaders(h, "X-Requested-With"="XMLHttpRequest")
 curl::curl_download(url="https://datashare.tu-dresden.de/public.php/webdav/",
                     destfile="datasets/spanorm.rds",
                     handle=h)
+
+# Free-hand selection coordinates
+dir.create("datasets/xenium_mouse_brain/selections")
+h = curl::new_handle()
+curl::handle_setopt(handle=h, userpwd="Ccp4crDZHBE8bZm:1234")
+curl::handle_setheaders(h, "X-Requested-With"="XMLHttpRequest")
+curl::curl_download(url="https://datashare.tu-dresden.de/public.php/webdav/",
+                    destfile="datasets/xenium_mouse_brain/selections/freehand-selection_cellids.csv",
+                    handle=h)
+
+

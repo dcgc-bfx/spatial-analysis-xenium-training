@@ -25,7 +25,7 @@ Our workbooks cover:
 
 ## Credits
 
-The workbooks are being written by [Katrin Sameith](https://github.com/ktrns), [Andreas Petzold](https://github.com/andpet0101), [Ulrike Friedrich](https://github/ulrikefriedrich), and [Rajinder Gupta](https://github.com/rajinder4489) at the [DRESDEN-concept Genome Center](https://genomecenter.tu-dresden.de/about-us). 
+The workbooks are being written by [Katrin Sameith](https://github.com/ktrns), [Andreas Petzold](https://github.com/andpet0101), [Ulrike Friedrich](https://github.com/ulrikefriedrich), and [Rajinder Gupta](https://github.com/rajinder4489) at the [DRESDEN-concept Genome Center](https://genomecenter.tu-dresden.de/about-us). 
 
 ## Contributions
 
@@ -38,6 +38,15 @@ We welcome contributions! To contribute:
 ## Citation
 
 If you used our workbooks to analyze your data, please cite it by mentioning the DRESDEN-concept Genome Center URL "https://genomecenter.tu-dresden.de". 
+
+## Singularity container
+
+We are happy to share our Singularity container. It contains all software required to run our code. 
+
+```
+# Command to download the singularity container
+singularity pull oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:v1.6.6
+```
 
 **Happy coding & exploring spatial data!**
 

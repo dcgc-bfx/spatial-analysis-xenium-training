@@ -79,7 +79,7 @@ The Xenium platform provides spatially resolved transcriptomics readouts. For ea
 
 Alternatively, we can delineate cell boundaries with **cell segmentation** methods. Thinking in terms of cells often simplifies data interpretation and allows us to use the extensive toolkit developed for scRNA-seq analysis. However, these scRNA-seq tools do not incorporate spatial information, which limits their ability to fully exploit the richness of Xenium data. Consequently, dedicated methods for spatially resolved transcriptomics are actively being developed.
 
-In this workflow, we work with cell segmentation. The data we read and analyse are classical gene-by-cell count matrices. We begin with standard quality control (QC) and preprocessing steps commonly used in scRNA-seq analysis. This provides an initial understanding of the data before applying spatially aware methods.
+In this workflow, we work with cell segmentation. The data we read and analyze are classical gene-by-cell count matrices. We begin with standard quality control (QC) and preprocessing steps commonly used in scRNA-seq analysis. This provides an initial understanding of the data before applying spatially aware methods.
 
 # Loading the dataset
 
@@ -269,7 +269,7 @@ p5 = VlnPlot(sc, features="nucleus_area", group.by="segmentation_method", pt.siz
 # Plot the cells with no nucleus_area
 sc$nucleus = ifelse(sc$nucleus_area==0, "no_nucleus", "has_nucleus")
 cols_nucleus = c(no_nucleus="#FFFF00", has_nucleus="grey50")
-p6 = ImageDimPlot(sc, group.by="nucleus", cols=cols_nucleus) + ggtitle(paste(sum(sc$nucleus=="no_nucleus")), "cells without nucleus")
+p6 = ImageDimPlot(sc, group.by="nucleus", cols=cols_nucleus) + ggtitle(paste(sum(sc$nucleus=="no_nucleus"), "cells without nucleus"))
 p6
 ```
 
@@ -416,7 +416,7 @@ Not all genes are equally informative. Experience shows that 1,000-3,000 genes w
 
 Highly variable genes are typically the genes that show strong variation across cells and are more likely to distinguish biological states. Housekeeping genes with similar expression profiles across all cells, or genes with minor expression differences, might add random noise and mask relevant changes during downstream analysis. 
 
-Here, we determine the top HGVs:
+Here, we determine the top HVGs:
 
 ```{r}
 #| label: preprocessing_3
@@ -424,7 +424,7 @@ Here, we determine the top HGVs:
 sc = FindVariableFeatures(sc)
 ```
 
-Plot the HGV and label the top 10 HVGs:
+Plot the HVGs and label the top 10:
 
 ```{r}
 #| label: preprocessing_4
@@ -465,7 +465,7 @@ With thousands of genes, the data is too high-dimensional for visualization or c
 
 We use Principal Component Analysis (PCA) to reduce the dimensionality. PCA finds new axes (PCs) that capture the most variance in the dataset, and projects the data onto these axes. The resulting meta-variables are called principal components (PCs).
 
-We use the `RunPCA` function to calculate the top 50 principle components (PCs) for the data. This creates a new dimensionality reduction object called `pca`:
+We use the `RunPCA` function to calculate the top 50 principal components (PCs) for the data. This creates a new dimensionality reduction object called `pca`:
 
 ```{r}
 #| label: preprocessing_10
@@ -558,7 +558,7 @@ Clusters are discrete groupings assigned algorithmically based on expression sim
 
 ## Clustering
 
-Seurat uses a graph-based approach for clustering. In short, Seurat first constructs a graph by identifying the k nearest neighbors for each cell in the PCA space based on Euclidean distance (NN). It then builds a refined version of the neighbor graph by considering shared neighbors between cells (SNN). Finally, a clustering algorithm is applied to the graph to partion it into groups of transcriptionally-related cells. These groups are then considered distinct cell populations. 
+Seurat uses a graph-based approach for clustering. In short, Seurat first constructs a graph by identifying the k nearest neighbors for each cell in the PCA space based on Euclidean distance (NN). It then builds a refined version of the neighbor graph by considering shared neighbors between cells (SNN). Finally, a clustering algorithm is applied to the graph to partition it into groups of transcriptionally-related cells. These groups are then considered distinct cell populations. 
 
 We begin by creating a nearest-neighbor graph using the `FindNeighbors` function in Seurat. We use the first 30 PCs as input and set the number of nearest neighbors to 20:
 
@@ -791,6 +791,7 @@ Bring the cluster labels back into Seurat metadata and compare UMAPs and tissue 
 #| label: spatial_clustering_4
 
 # Cluster colors
+set.seed(1)
 cols_spatialleiden = sample(cal_pal50[1:length(levels(sc$spatialleiden))])
 names(cols_spatialleiden) = levels(sc$spatialleiden)
 ```
@@ -1096,7 +1097,7 @@ Once the anchors have been identified, we use them to transfer cell type annotat
 predictions = TransferData(
   anchorset=anchors,
   refdata=ref$class_label,
-  dims=1:20
+  dims=1:30
 )
 
 # Filter low-confidence predictions (<0.6 but may vary across datasets)
@@ -1110,7 +1111,7 @@ sc = AddMetaData(sc, metadata=predictions)
 predictions = TransferData(
   anchorset=anchors,
   refdata=ref$subclass_label,
-  dims=1:20
+  dims=1:30
 )
 
 # Filter low-confidence predictions (<0.6 but may vary across datasets)
@@ -1153,7 +1154,8 @@ Finally, we compare the predicted cell types with our spatial clusters to evalua
 
 ```{r}
 #| label:  reference_mapping_10
-#| 
+#| fig-height: 6
+
 p1 = ggplot(sc[[]], aes(x=spatialleiden, fill=predicted.celltype)) +
   geom_bar(position = "stack") +
   scale_fill_discrete(na.value="grey80") +
@@ -1347,7 +1349,7 @@ Here we export the results of default **original clustering, spatially-aware clu
 #| label: export_results
 
 # Original clusters
-group_name = "clusters"
+group_name = "seurat_clusters"
 group_data = sc[[group_name]] %>% tibble::rownames_to_column()
 colnames(group_data) = c("cell_id", "group")
 group_data$color = cols_clusters[as.character(group_data$group)]
@@ -1371,6 +1373,8 @@ write.csv(group_data, file=paste0("xenium_explorer_", group_name, ".csv"), row.n
 ::: {.callout-note}
 ### Assignment 10
 If time permits, open Xenium Explorer and import the generated CSV files to visualize and explore the different clustering results within the spatial context of the tissue.
+
+You will need to download the files that are required for the Xenium Explorer to your local laptop. Please go  [here](https://www.10xgenomics.com/datasets/xenium-prime-fresh-frozen-mouse-brain) and click on "Explore data" for download. Unzip the archive and open the "experiment.xenium" file in the Xenium Explorer.
 :::
 
 # Session info
