@@ -33,7 +33,7 @@ library(grid)             # For other plots
 library(viridis)          # Our continuous colour palette
 
 # Colors
-cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
+cal_pal50 = c("#fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
               "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
               "#761445", "#d65b5a", "#94043a", "#e7a6cd", "#204519", "#87afd1", 
               "#9b9a9d", "#f95b70", "#83c874", "#808080", "#452b5b", "#ecb100", 
@@ -65,7 +65,7 @@ In this section, we will introduce the dataset we are using for this training se
 We use a **mouse brain dataset** from [10x Genomics](https://www.10xgenomics.com/):
 -   Source: Downloaded from [here](https://www.10xgenomics.com/datasets/xenium-prime-fresh-frozen-mouse-brain)
 -   Sample: Male C57BL/6 mouse, 9 weeks old, non-diseased
--   Tissue: Fresh-frozen brain tissue & embedding in OCT
+-   Tissue: Fresh-frozen brain tissue embedded in OCT
 -   Gene Panel: [Xenium Prime 5K Mouse Pan Tissue and Pathways Panel](https://www.10xgenomics.com/support/software/xenium-panel-designer/latest/tutorials/pre-designed-xenium-prime-5k)
 -   Additional Application: [Cell Segmentation Staining](https://www.10xgenomics.com/support/in-situ-gene-expression/documentation/steps/assay/xenium-in-situ-gene-expression-with-morphology-based-cell-segmentation-staining-user-guide)
 -   Platform: Xenium Analyzer
@@ -172,7 +172,7 @@ Any ideas why there are 5006 genes in the used gene panel, but 13,780 genes are 
 
 The R package [Seurat](https://satijalab.org/seurat/) is a widely used tool for single-cell and spatial transcriptomics analysis. It allows researchers to work with complex biological data and perform tasks like dimensionality reduction, clustering, and visualization.
 
-Another popular option is the [scanpy](https://squidpy.readthedocs.io/en/stable/) package in Python.
+Another popular option is the [scanpy](https://scanpy.readthedocs.io/en/stable/) package in Python.
 
 ## Importing the data into Seurat
 
@@ -184,7 +184,7 @@ The first step in analyzing your data is to import it into Seurat and transform 
 xenium.obj = Seurat::LoadXenium("datasets/xenium_mouse_brain",
                                 fov="fov",
                                 segmentations="cell", # can be "cell", "nucleus" or NONE
-                                flip.xy=TRUE) # swith x & y to mirror the Xenium Explorer view
+                                flip.xy=TRUE) # switch x & y to mirror the Xenium Explorer view
 
 # rename the data
 xenium.obj$orig.ident = "brain"
@@ -254,8 +254,8 @@ counts["Abca3", "aaaalabd-1"]
 ::: callout-tip
 ### Example
 
-This dataset has 5,006 genes, 63,173 cells and 86,525,682 counts.\
-Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
+This dataset has 5,006 genes, 63,173 cells and 86,638,709 counts.\
+Gene Abca3 has two transcripts in cell #1 (barcode aaaalabd-1).
 :::
 
 ::: callout-tip
@@ -468,7 +468,7 @@ By default, one image `fov` ("field of view") is present for the Xenium dataset.
 xenium.obj[["fov"]]
 ```
 
-When we refer to the default image in spatial transcriptomics, we usually mean the spatial coordinates associated with each cell. These coordinates tell us where each cell is located within the tissue section but not what the tissue looks like visually. The DAPI image itself it not automatically loaded into the Seurat object.
+When we refer to the default image in spatial transcriptomics, we usually mean the spatial coordinates associated with each cell. These coordinates tell us where each cell is located within the tissue section but not what the tissue looks like visually. The DAPI image itself is not automatically loaded into the Seurat object.
 
 The image slot typically contains the following information: - cell localization (called `centroids`) - cell segmentation (called `segmentation`) - molecule coordinates - image metadata
 
