@@ -93,6 +93,7 @@ Metadata:
 - `gene_panel.json`: list of used panel probes and corresponding genes
 
 Transcript data: 
+
 - `transcript.zarr.gz`: raw transcript data with x, y, z coordinates for each transcript in compressed zarr format (efficient storage)
 - `transcripts.parquet`: same content as above but in parquet format (faster input/output)
 
@@ -103,7 +104,9 @@ Images:
 
 ### Processed data
 
-The automatic Onboard Xenium Analysis processes the raw data and performs cell/ nuclei segmentation. The generated segmentation mask is used to assign each transcript based on its x, y, z coordinate to a specific cell. The results of this onboard analysis comprises the following folders and files: 
+The automatic Onboard Xenium Analysis processes the raw data and performs cell/ nuclei segmentation. The generated segmentation mask is used to assign each transcript based on its x, y, z coordinate to a specific cell. 
+The results of this onboard analysis comprises the following folders and files: 
+
 - `analysis_summary.html`: Quality Control (QC) report and initial analysis in HTML format 
 - `cells.zarr.zip`: precise information of cell & nuclear segmentation (used for transcript assignment, in compressed zarr format) 
 - `cell_boundaries.csv.gz` & `nucleus_boundaries.csv.gz`: information of cell & nuclear segmentation (used for visualization, coarser resolution) 
@@ -115,12 +118,14 @@ The automatic Onboard Xenium Analysis processes the raw data and performs cell/ 
 Additional data typically include microscopic images or additional measurements that were performed after the Xenium run.
 
 This dataset contains: 
+
 - `Xenium_Prime_Mouse_Brain_Coronal_FF_he_image.ome.tif`: H&E images of the Xenium slide 
 - `Xenium_Prime_Mouse_Brain_Coronal_FF_he_imagealignment.csv`: alignment file
 
 ## Counts data
 
 Let us take a closer look at the `cell_feature_matrix/` directory, which includes three important files:
+
 - `barcodes.tsv.gz`: contains the names (or identifiers) for each cell in the dataset 
 - `features.tsv.gz`: contains essential information about the genes, including their Ensembl IDs, symbols and gene types 
 - `matrix.mtx.gz`: contains the actual counts data 
@@ -176,7 +181,7 @@ Any ideas why there are 5006 genes in the used gene panel, but 13,780 genes are 
 
 The R package [Seurat](https://satijalab.org/seurat/) is a widely used tool for single-cell and spatial transcriptomics analysis. It allows researchers to work with complex biological data and perform tasks like dimensionality reduction, clustering, and visualization.
 
-Another popular option is the [scanpy](https://squidpy.readthedocs.io/en/stable/) package in Python.
+Another popular option is the [scanpy](https://scanpy.readthedocs.io/en/stable/)/[squidpy](https://squidpy.readthedocs.io/en/stable/) package in Python.
 
 ## Importing the data into Seurat
 
@@ -192,7 +197,7 @@ xenium.obj = Seurat::LoadXenium("datasets/xenium_mouse_brain",
 
 # rename the data
 xenium.obj$orig.ident = "brain"
-Seurat::Idents(xenium.obj) = "orig.ident"
+SeuratObject::Idents(xenium.obj) = "orig.ident"
 ```
 
 Now, let us take a look at the Seurat object to understand its structure:
@@ -212,7 +217,9 @@ How many layers are present in the "Xenium" assay?
 
 ## What is stored in the Seurat object?
 
-The Seurat object (=`xenium.obj`) organizes data into different components. These components facilitate spatial transcriptomics analysis and are crucial for data interpretation. The key components include: 
+The Seurat object (=`xenium.obj`) organizes data into different components. These components facilitate spatial transcriptomics analysis and are crucial for data interpretation. 
+The key components include: 
+
 - **Cells and genes**: these represent the spatial units (cells) and the genes that are being measured 
 - **Assay data**: contains the gene expression data (also possible: chromatin accessibility, surface proteins, etc.) 
 - **Metadata for cells**: information about each cell (e.g., sample type, condition) 
@@ -229,7 +236,7 @@ We can retrieve the total number of genes, cells and counts stored in the Seurat
 #| label: data_load_3
 
 # inspect genes
-Features(xenium.obj) %>% head(5)
+SeuratObject::Features(xenium.obj) %>% head(5)
 
 # get number of genes
 n_genes = nrow(xenium.obj)
@@ -246,7 +253,7 @@ n_cells
 dim(xenium.obj)
 
 # get total number of counts
-counts = Seurat::GetAssayData(xenium.obj, assay="Xenium", layer="counts")
+counts = SeuratObject::GetAssayData(xenium.obj, assay="Xenium", layer="counts")
 n_counts = sum(counts)
 n_counts
 
@@ -265,7 +272,7 @@ Gene #6 (Abca3) has two transcripts in cell #1 (barcode aaaalabd-1).
 ::: callout-tip
 ### Nomenclature
 
-Note that sometimes the term **cells** is also referred to as barcodes, bins, nucleus.\
+Note that sometimes the term **cells** is also referred to as barcodes, bins, nuclei.\
 The term **gene** is also referred to as feature, protein, or peak, depending on the dataset.\
 We will stick to cells and genes for this workshop.
 :::
@@ -275,7 +282,7 @@ Furthermore, cells have a default identity which is used for plotting. It can be
 ```{r}
 #| label: data_load_4
 
-Idents(xenium.obj) %>% head(5)
+SeuratObject::Idents(xenium.obj) %>% head(5)
 ```
 
 ## Assays
@@ -285,7 +292,7 @@ Assays store the actual data, for example gene expression counts. We can list th
 ```{r}
 #| label: data_assay_1
 
-Assays(xenium.obj)
+SeuratObject::Assays(xenium.obj)
 ```
 
 To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
@@ -293,7 +300,7 @@ To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
 ```{r}
 #| label: data_assay_2
 
-GetAssay(xenium.obj, assay="BlankCodeword")
+Seurat::GetAssay(xenium.obj, assay="BlankCodeword")
 xenium.obj[["BlankCodeword"]]
 ```
 
@@ -302,7 +309,7 @@ As before, we can also check the number of genes and cells in a specific assay l
 ```{r}
 #| label: data_assay_3
 
-assay = GetAssay(xenium.obj, assay="BlankCodeword")
+assay = Seurat::GetAssay(xenium.obj, assay="BlankCodeword")
 dim(assay)
 ```
 
@@ -328,8 +335,8 @@ For this workshop, we will focus on the assay `"Xenium"` for our analysis, becau
 ```{r}
 #| label: data_assay_6
 
-DefaultAssay(xenium.obj) = "Xenium"
-DefaultAssay(xenium.obj)
+SeuratObject::DefaultAssay(xenium.obj) = "Xenium"
+SeuratObject::DefaultAssay(xenium.obj)
 ```
 
 ::: callout-tip
@@ -348,6 +355,7 @@ How many genes are present in each assay?
 ## Xenium controls
 
 The pre-designed 5K Xenium panel contains also pre-designed negative controls of different types: 
+
 - The assay **BlankCodeword** contains codewords that are not used by any probe in the panel. These codewords are also labelled as "unassignedCodeword" (e.g. in the file `gene_panel.json`). n=8,096 
 - The assay **ControlCodeword** comprises codewords that have not corresponding probes present in the panel, similar to blank codewords. These negative control codewords are used to calculate the negative control metrics and to adjust the genes' Q scores. Their presence (or ideally absence) determine the specificity of the decoding algorithm. n=609 
 - The assay **ControlProbe** contains codewords with present probes in the probe pool. These probes are designed for non-biological targets and in a similar way as for "real genes" (\~3 probes per non-biological target). Non-biological targets should not be present in the measured tissue i.e. the probes should not be able to bind and give a signal. n=21 
@@ -369,12 +377,15 @@ xenium.obj[["GenomicControl"]] = NULL
 ```
 
 ::: callout-tip
-Note: Other gene panels (also custom gene panels) have different controls. But they are generally designed by 10x Genomics and provided to the user.
+### Note
+
+Other gene panels (also custom gene panels) have different controls. But they are generally designed by 10x Genomics and provided to the user.
 :::
 
 ## Assay data
 
 The assay object stores data in different **layers**: 
+
 - `counts`: Raw counts for each gene in each cell
 - `data`: Normalized counts for better comparability across cells
 - `scale.data`: Scaled data for better comparability across genes
@@ -384,7 +395,7 @@ We use the `GetAssayData` function to access the actual data:
 ```{r}
 #| label: data_counts
 
-counts = GetAssayData(xenium.obj, assay="Xenium", layer="counts")
+counts = SeuratObject::GetAssayData(xenium.obj, assay="Xenium", layer="counts")
 counts[1:10, 1:10]
 ```
 
@@ -423,7 +434,7 @@ Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object
 #| label: data_meta_3
 #| message: true
 
-assay = GetAssay(xenium.obj, assay="Xenium")
+assay = Seurat::GetAssay(xenium.obj, assay="Xenium")
 assay[[]] %>% head(5)
 ```
 
@@ -436,7 +447,7 @@ Dimensionality reductions (e.g., PCA, UMAP, tSNE) are essential for visualizing 
 ```{r}
 #| label: data_reduction
 
-Reductions(xenium.obj)
+SeuratObject::Reductions(xenium.obj)
 ```
 
 Currently, there are no reductions in the Seurat object. If they were present, you could access them using the `Reductions` function or the `[[]]` syntax.
@@ -448,8 +459,8 @@ To identify how the cells are related (e.g., for clustering), Seurat computes ne
 ```{r}
 #| label: data_neighbors
 
-Neighbors(xenium.obj)
-Graphs(xenium.obj)
+SeuratObject::Neighbors(xenium.obj)
+SeuratObject::Graphs(xenium.obj)
 ```
 
 Currently, there are no computed neighbors or graphs. If available, you could access them with the `GetNeighbors` / `GetGraph` functions or the `[[]]` syntax.
@@ -461,7 +472,7 @@ For spatial data, images are stored in the Seurat object to visualize tissue sec
 ```{r}
 #| label: data_image_1
 
-Images(xenium.obj)
+SeuratObject::Images(xenium.obj)
 ```
 
 By default, one image `fov` ("field of view") is present for the Xenium dataset. Additional images (such as H&E) can be loaded or defined by the `Crop` function which we will do later on. You can access a specific image using the `[[]]` syntax:
@@ -475,6 +486,7 @@ xenium.obj[["fov"]]
 When we refer to the default image in spatial transcriptomics, we usually mean the spatial coordinates associated with each cell. These coordinates tell us where each cell is located within the tissue section but not what the tissue looks like visually. The DAPI image itself it not automatically loaded into the Seurat object.
 
 The image slot typically contains the following information: 
+
 - cell localization (called `centroids`) 
 - cell segmentation (called `segmentation`) 
 - molecule coordinates 
@@ -494,8 +506,8 @@ We can also visualize gene expression in a spatial context using a **spatial fea
 #| label: data_plotting_1
 
 # plot with default or viridis color scale 
-p1 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
-p2 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_fill_viridis_c() + scale_y_reverse() 
+p1 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
+p2 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_fill_viridis_c() + scale_y_reverse() 
 
 p1 | p2 + patchwork::plot_layout(guides = "keep")
 
@@ -505,8 +517,8 @@ p1 | p2 + patchwork::plot_layout(guides = "keep")
 #| label: data_plotting_2
 
 # plot with default settings or in black and white
-p1 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
-p2 = ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95", cols=c("black","white")) + scale_y_reverse() 
+p1 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95") + scale_y_reverse()
+p2 = Seurat::ImageFeaturePlot(xenium.obj, features = "Acox1", max.cutoff ="q95", cols=c("black","white")) + scale_y_reverse() 
 
 p1 | p2 + patchwork::plot_layout(guides = "keep")
 
@@ -516,7 +528,7 @@ p1 | p2 + patchwork::plot_layout(guides = "keep")
 #| label: data_plotting_3
 
 # plot multiple genes at once 
-ImageFeaturePlot(xenium.obj, features = c("Aatf", "Abcb1a", "Acox1"), max.cutoff ="q95", cols=c("black","white"), combine=TRUE) & 
+Seurat::ImageFeaturePlot(xenium.obj, features = c("Aatf", "Abcb1a", "Acox1"), max.cutoff ="q95", cols=c("black","white"), combine=TRUE) & 
   scale_y_reverse()
 
 ```
@@ -541,7 +553,7 @@ We can create a **violin plot** of the same genes to show the spatial-independen
 ```{r}
 #| label: data_plotting_4
 
-VlnPlot(xenium.obj, features=c("Aatf", "Abcb1a", "Acox1"), layer="counts", pt.size=0) + NoLegend()
+Seurat::VlnPlot(xenium.obj, features=c("Aatf", "Abcb1a", "Acox1"), layer="counts", pt.size=0) + Seurat::NoLegend()
 ```
 
 ::: callout-note
@@ -563,8 +575,8 @@ We can also plot the total number of counts (or other general QC stats) for the 
 ```{r}
 #| label: data_plotting_5
 
-p1 = VlnPlot(xenium.obj, features = c("nCount_Xenium"), layer="counts", pt.size = 0)
-p2 = ImageFeaturePlot(xenium.obj, features = c("nCount_Xenium"), max.cutoff ="q99") + scale_fill_viridis_c() + scale_y_reverse() 
+p1 = Seurat::VlnPlot(xenium.obj, features = c("nCount_Xenium"), layer="counts", pt.size = 0) + Seurat::NoLegend()
+p2 = Seurat::ImageFeaturePlot(xenium.obj, features = c("nCount_Xenium"), max.cutoff ="q99") + scale_fill_viridis_c() + scale_y_reverse() 
 
 p1 | p2 + patchwork::plot_layout(guides = "keep")
 
@@ -621,7 +633,7 @@ x_max = 6000
 y_min = 200
 y_max = 3100
 
-crop1 <- Crop(xenium.obj[["fov"]],
+crop1 <- SeuratObject::Crop(xenium.obj[["fov"]],
              x = c(x_min, x_max),
              y = c(y_min, y_max))
 
@@ -654,16 +666,15 @@ x_max = 4830
 y_min = 1665
 y_max = 1995
 
-crop2 <- Crop(xenium.obj[["fov"]],
+crop2 <- SeuratObject::Crop(xenium.obj[["fov"]],
              x = c(x_min, x_max),
              y = c(y_min, y_max))
-
 
 # save new image "crop2"
 xenium.obj[["crop2"]] <- crop2
 
 # switch to cell boundaries (default: "centroids")
-DefaultBoundary(xenium.obj[["crop2"]]) <- "segmentation"
+SeuratObject::DefaultBoundary(xenium.obj[["crop2"]]) <- "segmentation"
 
 # plot total counts 
 Seurat::ImageFeaturePlot(xenium.obj, fov = "crop2", features = c("nCount_Xenium"), max.cutoff ="q99") + scale_fill_viridis_c() + scale_y_reverse()
